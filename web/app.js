@@ -1,10 +1,10 @@
 // ============================================================================
 // FIRMWARE FRONTEND: Riego Hidráulico TLC
-// VERSION: v2.2.6 (Build: 20260613-2015)
-// DESCRIPCIÓN: Íconos SVG rediseñados desde cero basados en las fotos reales del hardware
+// VERSION: v2.3.0 (Build: 20260613-2240)
+// DESCRIPCIÓN: Íconos industriales minimalistas de alta calidad + Gestión de Períodos (Invierno)
 // ============================================================================
 
-const CONFIG_VERSION = "v2.2.6 (Build: 20260613-2015)";
+const CONFIG_VERSION = "v2.3.0 (Build: 20260613-2240)";
 
 window.cicloInterval = null;
 window.tanqueInterval = null;
@@ -12,22 +12,17 @@ window.tanqueInterval = null;
 const diasSemana = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 const nombresDiasLargos = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-// --- NUEVOS ÍCONOS SVG BIEN DETALLADOS BASADOS FIELMENTE EN TUS FOTOS ---
-
-// Aspersor sectorial de impacto mecánico con resorte y boquilla de salida
-const ICONO_ASPERSOR_JPG = `<svg viewBox="0 0 32 32" style="width:28px; height:28px; margin-bottom:4px; color:inherit;">
-    <path fill="currentColor" d="M14 26h4v4h-4zm-2-6h8v4h-8zm3-11.85V12h2V8.15a4 4 0 0 0 3.65-2.5l-1.88-.68A2 2 0 0 1 17 6.18V4h-2v2.18a2 2 0 0 1-1.77 1.21l-1.88.68A4 4 0 0 0 15 8.15zM24 13h-4.17l-1.5-3h4.67zm-11.33 0l-1.5-3H6.5v3zM5 15h22v4H5z"/>
-    <path fill="currentColor" opacity="0.4" d="M19.5 20h-7l-1-6h9zM28 8.5a4.5 4.5 0 0 0-4.5 4.5h1a3.5 3.5 0 0 1 3.5-3.5zM4 13a4.5 4.5 0 0 0 4.5-4.5v-1A3.5 3.5 0 0 1 5 11z"/>
+// --- ÍCONOS SVG MINIMALISTAS INDUSTRIALES DE ALTA CALIDAD (REDISENO LIMPIO) ---
+const ICONO_ASPERSOR_JPG = `<svg viewBox="0 0 24 24" style="width:26px; height:26px; margin-bottom:4px; color:inherit;">
+    <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M12 22v-6m-3 0h6v3H9zm3-6V9m0 0c-2.5 0-4.5-1.5-5.5-3M12 9c2.5 0 4.5-1.5 5.5-3M3 4c1-1 3-1 4 0M17 4c1-1 3-1 4 0M10 3c.5-.7 1.5-.7 2 0"/>
 </svg>`;
 
-// Bomba centrífuga con caja superior, cuerpo de voluta y aletas de motor
-const ICONO_BOMBA_JPG = `<svg viewBox="0 0 32 32" style="width:24px; height:24px; vertical-align:middle; margin-right:8px;">
-    <path fill="currentColor" d="M28 14h-2v-3a1 1 0 0 0-1-1h-6v8h6a1 1 0 0 0 1-1v-3h2a2 2 0 0 0 2-2v-1a2 2 0 0 0-2-2zm-12-6h-3V4H9v4H6a4 4 0 0 0-4 4v7a4 4 0 0 0 4 4h1a4 4 0 0 0 4-4v-1h5v2a2 2 0 0 0 2 2h8v-2h-8v-3h8v-2h-8v-3h8v-2h-8V8a2 2 0 0 0-2-2zM6 21a2 2 0 1 1 2-2 2 2 0 0 1-2 2z"/>
+const ICONO_BOMBA_JPG = `<svg viewBox="0 0 24 24" style="width:22px; height:22px; vertical-align:middle; margin-right:8px;">
+    <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M18 12a6 6 0 1 1-12 0 6 6 0 0 1 12 0zm0 0h4v3h-4zm-9-6V2h4v4M4 16h2m-2-4h2m-2-4h2M12 9v6m-3-3h6"/>
 </svg>`;
 
-// Boya flotante eléctrica de nivel con salida de cable superior y contrapeso
-const ICONO_FLOTANTE_JPG = `<svg viewBox="0 0 32 32" style="width:24px; height:24px; vertical-align:middle; margin-right:8px;">
-    <path fill="currentColor" d="M15 2h2v4h-2zm-3 5h8v3h-8zm-2 5h12v12A6 6 0 0 1 16 28a6 6 0 0 1-6-6zm3 3a3 3 0 1 0 3 3 3 3 0 0 0-3-3z"/>
+const ICONO_FLOTANTE_JPG = `<svg viewBox="0 0 24 24" style="width:22px; height:22px; vertical-align:middle; margin-right:8px;">
+    <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M12 2v4m0 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm-3-4h6v2H9zm3 10v2"/>
 </svg>`;
 
 
@@ -36,9 +31,10 @@ for (let i = 1; i <= 8; i++) {
     zonasMaestras.push({ id: i, nombre: `Zona Riego ${i}` });
 }
 
+// Estructura de programas actualizada con el campo 'periodo'
 let programas = [
-    { id: 1, nombre: "Programa Mañana (A)", start_time: "06:00", dias: [1, 3, 5], zonas: [{id: 1, min: 10}, {id: 2, min: 15}] },
-    { id: 2, nombre: "Programa Tarde (B)", start_time: "19:30", dias: [2, 4], zonas: [{id: 4, min: 12}] }
+    { id: 1, nombre: "Programa Mañana (A)", start_time: "06:00", dias: [1, 3, 5], periodo: "anual", zonas: [{id: 1, min: 10}, {id: 2, min: 15}] },
+    { id: 2, nombre: "Programa Tarde (B) - Invierno", start_time: "19:30", dias: [2, 4], periodo: "invierno", zonas: [{id: 4, min: 12}] }
 ];
 
 let programaEditandoId = null;
@@ -55,7 +51,7 @@ let tiempoManualGlobalConfigurado = 5;
 function trazarVersionCompilacion() {
     console.log(
         `%c 💧 TLC MULTIPROGRAMA CUSTOM — Active Version: ${CONFIG_VERSION} `,
-        "background: #0288d1; color: #ffffff; font-weight: bold; padding: 4px; border-radius: 4px;"
+        "background: #1e1e24; color: #00e676; font-weight: bold; padding: 4px; border-radius: 4px;"
     );
 }
 
@@ -181,14 +177,20 @@ function renderizarMonitorPrincipal() {
         card.style.marginBottom = "10px";
         
         let stringDias = prog.dias.map(d => diasSemana[d]).join(' - ');
-        let listadoZonas = prog.zonas.map(z => `Z${z.id} (${z.min}m)`).join(', ');
+        
+        // Ajuste visual de tiempos si es periodo de invierno (Aplica factor de reducción del 50%)
+        let esInvierno = (prog.periodo === 'invierno');
+        let listadoZonas = prog.zonas.map(z => {
+            let minutosCalculados = esInvierno ? Math.max(1, Math.round(z.min / 2)) : z.min;
+            return `Z${z.id} (${minutosCalculados}m${esInvierno ? ' ❄️':''})`;
+        }).join(', ');
 
         card.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <div>
                     <strong>⚙️ ${prog.nombre}</strong> — <span style="color:var(--primary); font-weight:bold;">${prog.start_time} hs</span>
-                    <div style="font-size:11px; color:#666; margin-top:4px;">Calendario: [${stringDias}]</div>
-                    <div style="font-size:12px; color:var(--dark); font-weight:bold; margin-top:2px;">Zonas: ${listadoZonas || 'Ninguna'}</div>
+                    <div style="font-size:11px; color:#666; margin-top:4px;">Calendario: [${stringDias}] | Período: <strong style="color:${esInvierno?'#0288d1':'#2e7d32'}">${esInvierno?'❄️ Solo Invierno':'☀️ Todo el Año'}</strong></div>
+                    <div style="font-size:12px; color:var(--dark); font-weight:bold; margin-top:2px;">Zonas running: ${listadoZonas || 'Ninguna'}</div>
                 </div>
                 <button class="btn" style="width:auto; padding:8px 12px; font-size:12px; background:var(--success);" onclick="lanzarProgramaDesdeMonitor(${prog.id})">▶️ Ejecutar</button>
             </div>
@@ -208,11 +210,15 @@ function renderizarPantallaConfiguracion() {
         card.style.marginBottom = "15px";
 
         let stringDias = prog.dias.map(d => diasSemana[d]).join(' - ');
-        let totalMinutos = prog.zonas.reduce((acc, current) => acc + current.min, 0);
+        let esInvierno = (prog.periodo === 'invierno');
+        let totalMinutos = prog.zonas.reduce((acc, current) => {
+            let mins = esInvierno ? Math.max(1, Math.round(current.min / 2)) : current.min;
+            return acc + mins;
+        }, 0);
 
         card.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:8px;">
-                <span style="font-size:16px; font-weight:bold; color:var(--dark);">📋 ${prog.nombre}</span>
+                <span style="font-size:16px; font-weight:bold; color:var(--dark);">📋 ${prog.nombre} ${esInvierno?'❄️':''}</span>
                 <div style="display:flex; gap:5px;">
                     <button class="btn" style="padding:6px 12px; font-size:12px; background:var(--primary);" onclick="abrirEditorPrograma(${prog.id})">📝 Modificar</button>
                     <button class="btn" style="padding:6px 12px; font-size:12px; background:var(--danger);" onclick="eliminarPrograma(${prog.id})">🗑️ Borrar</button>
@@ -220,8 +226,9 @@ function renderizarPantallaConfiguracion() {
             </div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; font-size:13px; color:#555;">
                 <div>⏰ Hora Arranque: <strong>${prog.start_time} hs</strong></div>
-                <div>⏱️ Duración Total: <strong>${totalMinutos} min</strong></div>
+                <div>⏱️ Duración Total: <strong>${totalMinutos} min ${esInvierno?'(Reducido 50%)':''}</strong></div>
                 <div style="grid-column: span 2; margin-top:5px;">📅 Días de Riego: <span style="color:var(--primary); font-weight:bold;">${stringDias || 'Ninguno seleccionado'}</span></div>
+                <div style="grid-column: span 2; margin-top:3px;">❄️ Régimen de Estación: <strong>${esInvierno ? 'Modo Invierno Activo (Menos caudal)':'Régimen Normal Completo'}</strong></div>
             </div>
         `;
         container.appendChild(card);
@@ -230,13 +237,37 @@ function renderizarPantallaConfiguracion() {
 
 function abrirEditorPrograma(id) {
     programaEditandoId = id;
-    const prog = id ? programas.find(p => p.id === id) : { id: Date.now(), nombre: "Nuevo Programa", start_time: "07:00", dias: [], zonas: [] };
+    const prog = id ? programas.find(p => p.id === id) : { id: Date.now(), nombre: "Nuevo Programa", start_time: "07:00", dias: [], periodo: "anual", zonas: [] };
     
     if(!programas.find(p => p.id === id) && id !== null) return;
 
     document.getElementById('modal-titulo').innerText = id ? "Modificar Programa" : "Crear Nuevo Programa";
     document.getElementById('modal-nombre-prog').value = prog.nombre;
     document.getElementById('modal-start-time').value = prog.start_time;
+
+    // Inyección dinámica de selector de periodo dentro del modal de configuración
+    let contenedorAsignacion = document.getElementById('modal-zones-assignment');
+    if(contenedorAsignacion) {
+        // Busco si ya existe el combo de periodo, si no lo creo arriba de las zonas
+        let idFiltro = document.getElementById('wrapper-periodo-select');
+        if(!idFiltro) {
+            const wrapSelect = document.createElement('div');
+            wrapSelect.id = "wrapper-periodo-select";
+            wrapSelect.style.marginBottom = "15px";
+            wrapSelect.style.padding = "10px";
+            wrapSelect.style.background = "#f1f3f4";
+            wrapSelect.style.borderRadius = "6px";
+            wrapSelect.innerHTML = `
+                <label style="display:block; font-weight:bold; font-size:13px; margin-bottom:5px; color:var(--dark);">⚙️ Período Estacional del Programa:</label>
+                <select id="modal-periodo-select" style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc; font-size:14px;">
+                    <option value="anual">☀️ Todo el año (Tiempos Base nominales)</option>
+                    <option value="invierno">❄️ Programa de Invierno (Aplica -50% de tiempo automático)</option>
+                </select>
+            `;
+            contenedorAsignacion.parentNode.insertBefore(wrapSelect, contenedorAsignacion);
+        }
+        document.getElementById('modal-periodo-select').value = prog.periodo || "anual";
+    }
 
     const selectorDias = document.getElementById('modal-days-selector');
     if(selectorDias) {
@@ -255,9 +286,8 @@ function abrirEditorPrograma(id) {
         });
     }
 
-    const contenedorZonas = document.getElementById('modal-zones-assignment');
-    if(contenedorZonas) {
-        contenedorZonas.innerHTML = '';
+    if(contenedorAsignacion) {
+        contenedorAsignacion.innerHTML = '';
         zonasMaestras.forEach(zMaestra => {
             const zonaEnProg = prog.zonas.find(z => z.id === zMaestra.id);
             const asignada = !!zonaEnProg;
@@ -282,7 +312,7 @@ function abrirEditorPrograma(id) {
                     <input type="range" min="1" max="60" value="${minutosRiego || 5}" id="slide-zona-${zMaestra.id}" ${!asignada ? 'disabled':''} style="flex-grow:1;" oninput="cambiarMinutosZonaPrograma(${zMaestra.id}, this.value)">
                 </div>
             `;
-            contenedorZonas.appendChild(row);
+            contenedorAsignacion.appendChild(row);
         });
     }
 
@@ -328,19 +358,27 @@ function cambiarMinutosZonaPrograma(idZona, valor) {
 function cerrarEditorModal() {
     document.getElementById('editor-modal-screen').style.display = 'none';
     window.tempNuevoProg = null;
+    let elem = document.getElementById('wrapper-periodo-select');
+    if(elem) elem.remove(); 
 }
 
 function guardarCambiosPrograma() {
     const name = document.getElementById('modal-nombre-prog').value;
     const time = document.getElementById('modal-start-time').value;
+    const periodValue = document.getElementById('modal-periodo-select').value;
 
     if(programaEditandoId === "NUEVO") {
         window.tempNuevoProg.nombre = name;
         window.tempNuevoProg.start_time = time;
+        window.tempNuevoProg.periodo = periodValue;
         programas.push(window.tempNuevoProg);
     } else {
         let prog = programas.find(p => p.id === programaEditandoId);
-        if(prog) { prog.nombre = name; prog.start_time = time; }
+        if(prog) { 
+            prog.nombre = name; 
+            prog.start_time = time; 
+            prog.periodo = periodValue;
+        }
     }
 
     local_guardarEstadoGlobal();
@@ -393,7 +431,16 @@ function lanzarProgramaDesdeMonitor(idProg) {
     if(!prog || prog.zonas.length === 0) { alert("Este programa no tiene zonas asignadas."); return; }
 
     sistemaEstado = 'riego_auto';
-    listaZonasPrioridad = [...prog.zonas]; 
+    
+    // Mapeo dinámico aplicando reducción por invierno si corresponde
+    let esInvierno = (prog.periodo === 'invierno');
+    listaZonasPrioridad = prog.zonas.map(z => {
+        return {
+            id: z.id,
+            min: esInvierno ? Math.max(1, Math.round(z.min / 2)) : z.min
+        };
+    });
+    
     avanzarCicloAutomaticoMulti();
 }
 
@@ -647,6 +694,6 @@ function enviarConfiguracionFlashESP32() {
         programas: programas
     };
     console.log("JSON Maestro enviado hacia el LittleFS del ESP32:", JSON.stringify(payload, null, 2));
-    alert("🚀 ¡Configuración de programas sincronizada por red con el ESP32!");
+    alert("🚀 ¡Configuración estacional y de programas sincronizada con el ESP32!");
     navegarHacia("monitor.html");
 }
