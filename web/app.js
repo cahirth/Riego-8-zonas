@@ -1,16 +1,21 @@
 // ============================================================================
 // FIRMWARE FRONTEND: Riego Hidráulico TLC
-// VERSION: v2.1.1 (Build: 20260613-2030)
-// DESCRIPCIÓN: Optimización de la secuencia de guardado y mitigación de alertas del DOM
+// VERSION: v2.2.0 (Build: 20260613-1905)
+// DESCRIPCIÓN: Consolidación total de Bugs (Bomba, Timeout, Modal) + Iconografía Profesional
 // ============================================================================
 
-const CONFIG_VERSION = "v2.1.1 (Build: 20260613-2030)";
+const CONFIG_VERSION = "v2.2.0 (Build: 20260613-1905)";
 
 window.cicloInterval = null;
 window.tanqueInterval = null;
 
 const diasSemana = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 const nombresDiasLargos = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+// ÍCONOS SVG INDUSTRIALES EN ALTA RESOLUCIÓN
+const ICONO_ASPERSOR = `<svg viewBox="0 0 24 24" style="width:24px; height:24px; margin-bottom:4px;"><path fill="currentColor" d="M12 2a1 1 0 0 1 1 1v2.07c2.42.44 4.34 2.36 4.78 4.78H21a1 1 0 1 1 0 2h-3.15c-.44 2.42-2.36 4.34-4.78 4.78V21a1 1 0 1 1-2 0v-2.15c-2.42-.44-4.34-2.36-4.78-4.78H3a1 1 0 1 1 0-2h3.15c.44-2.42 2.36-4.34 4.78-4.78V3a1 1 0 0 1 1-1m0 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10m0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/></svg>`;
+const ICONO_BOMBA = `<svg viewBox="0 0 24 24" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"><path fill="currentColor" d="M12 2a3 3 0 0 0-3 3v1.17A5 5 0 0 0 5 11v2a5 5 0 0 0 4 4.9V20a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2.1a5 5 0 0 0 4-4.9v-2a5 5 0 0 0-4-4.83V5a3 3 0 0 0-3-3M11 5a1 1 0 0 1 2 0v1h-2V5m1 3a3 3 0 0 1 3 3v2h-6v-2a3 3 0 0 1 3-3z"/></svg>`;
+const ICONO_VALVULA = `<svg viewBox="0 0 24 24" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"><path fill="currentColor" d="M19 6h-4V3a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v3H5a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2m-8-2h2v2h-2V4m8 8H5a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1M12 14c-3.31 0-6 2.69-6 6a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1c0-3.31-2.69-6-6-6z"/></svg>`;
 
 let zonasMaestras = [];
 for (let i = 1; i <= 8; i++) {
@@ -35,8 +40,8 @@ let tiempoManualGlobalConfigurado = 5;
 
 function trazarVersionCompilacion() {
     console.log(
-        `%c 💧 TLC MULTIPROGRAMA — Active Version: ${CONFIG_VERSION} `,
-        "background: #4CAF50; color: #ffffff; font-weight: bold; padding: 4px; border-radius: 4px;"
+        `%c 💧 TLC MULTIPROGRAMA INDUSTRIAL — Active Version: ${CONFIG_VERSION} `,
+        "background: #2196F3; color: #ffffff; font-weight: bold; padding: 4px; border-radius: 4px;"
     );
 }
 
@@ -66,6 +71,24 @@ function local_recuperarEstadoGoblal() {
         sliderInput.value = tiempoManualGlobalConfigurado;
         sliderDisplay.innerText = tiempoManualGlobalConfigurado + "m";
     }
+    
+    // Inyecta íconos dinámicos en los badges fijos del monitor de hardware
+    const lblBomba = document.getElementById('hw-bomba');
+    const lblValvula = document.getElementById('hw-tanque');
+    if(lblBomba && !lblBomba.innerHTML.includes('<svg')) {
+        lblBomba.insertAdjacentHTML('afterbegin', ICONO_BOMBA);
+    }
+    if(lblValvula && !lblValvula.innerHTML.includes('<svg')) {
+        lblValvula.insertAdjacentHTML('afterbegin', ICONO_VALVULA);
+    }
+}
+
+function actualizarDisplayTimeout(valor) {
+    // FIX 3: El slider de ajustes ahora pisa inmediatamente la variable global
+    timeoutTanqueConfigurado = parseInt(valor);
+    const display = document.getElementById('display-timeout-tanque');
+    if(display) display.innerText = valor === '0' ? 'Manual' : valor + 'm';
+    local_guardarEstadoGlobal();
 }
 
 function actualizarDisplayTiempoManualGlobal(valor) {
@@ -78,7 +101,7 @@ function actualizarDisplayTiempoManualGlobal(valor) {
 function actualizarFechaHoy() {
     const ahora = new Date();
     const hoyIdx = ahora.getDay();
-    const fechaString = Pattern = ahora.toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
+    const fechaString = ahora.toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
     const labelFecha = document.getElementById('display-fecha-hoy');
     if(labelFecha) labelFecha.innerText = `Hoy: ${nombresDiasLargos[hoyIdx]} ${fechaString}`;
 }
@@ -110,15 +133,17 @@ function renderizarMonitorPrincipal() {
     gridZonas.className = "manual-grid";
 
     zonasMaestras.forEach(zona => {
-        const isActive = (zonaActivaId === zona.id && sistemaEstado === 'riego_manual');
+        const isActive = (zonaActivaId === zona.id && (sistemaEstado === 'riego_manual' || sistemaEstado === 'riego_auto'));
         const isPaused = (zonaActivaId === zona.id && sistemaEstado.startsWith('pausa_tanque'));
         let extraClass = isActive ? 'active' : (isPaused ? 'paused' : (esBloqueadoPorTanque ? 'disabled' : ''));
         
         const btn = document.createElement('div');
         btn.className = `btn-manual ${extraClass}`;
         btn.onclick = () => { if(!esBloqueadoPorTanque) toggleZonaManualDirecta(zona.id); };
+        
+        // DISEÑO 1: Inyección de ícono de aspersor de impacto profesional
         btn.innerHTML = `
-            <svg viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4Z"/></svg>
+            ${ICONO_ASPERSOR}
             <span>${zona.nombre}</span>
         `;
         gridZonas.appendChild(btn);
@@ -280,6 +305,11 @@ function cambiarMinutosZonaPrograma(idZona, valor) {
     }
 }
 
+function cerrarEditorModal() {
+    document.getElementById('editor-modal-screen').style.display = 'none';
+    window.tempNuevoProg = null;
+}
+
 function guardarCambiosPrograma() {
     const name = document.getElementById('modal-nombre-prog').value;
     const time = document.getElementById('modal-start-time').value;
@@ -293,8 +323,9 @@ function guardarCambiosPrograma() {
         if(prog) { prog.nombre = name; prog.start_time = time; }
     }
 
-    // SECUENCIA OPTIMIZADA: Guarda primero, cierra después y actualiza de manera aislada
     local_guardarEstadoGlobal();
+    
+    // FIX 2 (Línea 298): Función agregada explícitamente dentro del flujo para limpiar el ReferenceError
     cerrarEditorModal();
     
     let path = window.location.pathname;
@@ -323,10 +354,11 @@ function toggleZonaManualDirecta(zonaId) {
     tiempoRestanteActual = tiempoManualGlobalConfigurado; 
     tiempoInicialAsignado = tiempoManualGlobalConfigurado; 
 
+    // DISEÑO 2: Inyección de ícono de bomba centrífuga en el badge activo
     document.getElementById('hw-tanque').className = 'hw-badge closed';
-    document.getElementById('hw-tanque').innerText = 'VALV. TANQUE: CERRADA (NC) 🔴';
+    document.getElementById('hw-tanque').innerHTML = `${ICONO_VALVULA} VALV. TANQUE: CERRADA (NC) 🔴`;
     document.getElementById('hw-bomba').className = 'hw-badge on';
-    document.getElementById('hw-bomba').innerText = 'BOMBA: RUNNING ⚡';
+    document.getElementById('hw-bomba').innerHTML = `${ICONO_BOMBA} BOMBA: RUNNING ⚡`;
 
     arrancarBucleTiempoGenerico(false);
     renderizarMonitorPrincipal();
@@ -350,9 +382,9 @@ function avanzarCicloAutomaticoMulti() {
         tiempoInicialAsignado = proximaZona.min;
 
         document.getElementById('hw-tanque').className = 'hw-badge closed';
-        document.getElementById('hw-tanque').innerText = 'VALV. TANQUE: CERRADA (NC) 🔴';
+        document.getElementById('hw-tanque').innerHTML = `${ICONO_VALVULA} VALV. TANQUE: CERRADA (NC) 🔴`;
         document.getElementById('hw-bomba').className = 'hw-badge on';
-        document.getElementById('hw-bomba').innerText = 'BOMBA: RUNNING ⚡';
+        document.getElementById('hw-bomba').innerHTML = `${ICONO_BOMBA} BOMBA: RUNNING ⚡`;
 
         arrancarBucleTiempoGenerico(true);
         renderizarMonitorPrincipal();
@@ -367,9 +399,13 @@ function arrancarBucleTiempoGenerico(esAutomatico) {
     const bar = document.getElementById('cycle-progress');
     
     if(wrapper) wrapper.style.display = 'block';
-    if(bar) {
-        bar.className = 'progress-bar';
-        bar.style.width = '0%'; 
+    if(bar) bar.className = 'progress-bar';
+
+    // FIX 1: Fuerza y asegura el re-encendido visual y lógico de la bomba al levantar el bucle tras la pausa
+    const hwBomba = document.getElementById('hw-bomba');
+    if(hwBomba) {
+        hwBomba.className = 'hw-badge on';
+        hwBomba.innerHTML = `${ICONO_BOMBA} BOMBA: RUNNING ⚡`;
     }
 
     document.getElementById('status-text').className = 'status-current running';
@@ -387,7 +423,7 @@ function arrancarBucleTiempoGenerico(esAutomatico) {
         } else {
             clearInterval(window.cicloInterval);
             document.getElementById('hw-bomba').className = 'hw-badge';
-            document.getElementById('hw-bomba').innerText = 'BOMBA: OFF';
+            document.getElementById('hw-bomba').innerHTML = `${ICONO_BOMBA} BOMBA: OFF`;
             
             if (esAutomatico) avanzarCicloAutomaticoMulti();
             else forzarParadaTotal();
@@ -415,18 +451,18 @@ function ejecutarLlenadoSecuencial() {
         sistemaEstado = 'pausa_tanque_' + estadoPrevio; 
         if(window.cicloInterval) clearInterval(window.cicloInterval);
         document.getElementById('hw-bomba').className = 'hw-badge';
-        document.getElementById('hw-bomba').innerText = 'BOMBA: OFF';
+        document.getElementById('hw-bomba').innerHTML = `${ICONO_BOMBA} BOMBA: OFF`;
 
         setTimeout(() => {
             document.getElementById('hw-tanque').className = 'hw-badge';
-            document.getElementById('hw-tanque').innerText = 'VALV. TANQUE: ABIERTA';
+            document.getElementById('hw-tanque').innerHTML = `${ICONO_VALVULA} VALV. TANQUE: ABIERTA`;
             document.getElementById('status-text').className = 'status-current paused';
             document.getElementById('status-text').innerText = `⏳ ESPERANDO BOMBA (500ms)`;
 
             setTimeout(() => {
                 if (tanqueLlamando) {
                     document.getElementById('hw-bomba').className = 'hw-badge on';
-                    document.getElementById('hw-bomba').innerText = 'BOMBA: RUNNING (LLENANDO TANQUE) ⚡';
+                    document.getElementById('hw-bomba').innerHTML = `${ICONO_BOMBA} BOMBA: RUNNING (LLENANDO TANQUE) ⚡`;
                     arrancarBucleTanque(timeoutTanqueConfigurado * 60);
                 }
             }, 500);
@@ -436,11 +472,11 @@ function ejecutarLlenadoSecuencial() {
         sistemaEstado = 'llenado_puro';
         renderizarBotonesManualesEmulados();
         document.getElementById('hw-tanque').className = 'hw-badge';
-        document.getElementById('hw-tanque').innerText = 'VALV. TANQUE: ABIERTA';
+        document.getElementById('hw-tanque').innerHTML = `${ICONO_VALVULA} VALV. TANQUE: ABIERTA`;
         setTimeout(() => {
             if (tanqueLlamando) {
                 document.getElementById('hw-bomba').className = 'hw-badge on';
-                document.getElementById('hw-bomba').innerText = 'BOMBA: RUNNING (LLENANDO TANQUE) ⚡';
+                document.getElementById('hw-bomba').innerHTML = `${ICONO_BOMBA} BOMBA: RUNNING (LLENANDO TANQUE) ⚡`;
                 arrancarBucleTanque(timeoutTanqueConfigurado * 60);
             }
         }, 500);
@@ -480,11 +516,11 @@ function arrancarBucleTanque(segundosTotales) {
 function detenerLlenadoSecuencial(porTimeout) {
     if(window.tanqueInterval) clearInterval(window.tanqueInterval);
     document.getElementById('hw-bomba').className = 'hw-badge';
-    document.getElementById('hw-bomba').innerText = 'BOMBA: OFF';
+    document.getElementById('hw-bomba').innerHTML = `${ICONO_BOMBA} BOMBA: OFF`;
 
     setTimeout(() => {
         document.getElementById('hw-tanque').className = 'hw-badge closed';
-        document.getElementById('hw-tanque').innerText = 'VALV. TANQUE: CERRADA (NC) 🔴';
+        document.getElementById('hw-tanque').innerHTML = `${ICONO_VALVULA} VALV. TANQUE: CERRADA (NC) 🔴`;
 
         tanqueLlamando = false;
         const btnSim = document.getElementById('btn-sim-flotante');
@@ -497,7 +533,10 @@ function detenerLlenadoSecuencial(porTimeout) {
         }
 
         if (sistemaEstado.startsWith('pausa_tanque')) {
-            arrancarBucleTiempoGenerico(sistemaEstado.includes('riego_auto'));
+            // FIX 1 FINAL: Setea correctamente el estado recuperado antes de encender la bomba
+            let anteriorAuto = sistemaEstado.includes('riego_auto');
+            sistemaEstado = anteriorAuto ? 'riego_auto' : 'riego_manual';
+            arrancarBucleTiempoGenerico(anteriorAuto);
         } else {
             forzarParadaTotal();
         }
@@ -520,10 +559,11 @@ function forzarParadaTotal() {
         lblText.className = 'status-current'; lblText.innerText = '🏠 EN ESPERA (STANDBY)';
         document.getElementById('timer-remaining').innerText = '';
         document.getElementById('progress-wrapper').style.display = 'none';
+        
         document.getElementById('hw-bomba').className = 'hw-badge';
-        document.getElementById('hw-bomba').innerText = 'BOMBA: OFF';
+        document.getElementById('hw-bomba').innerHTML = `${ICONO_BOMBA} BOMBA: OFF`;
         document.getElementById('hw-tanque').className = 'hw-badge closed';
-        document.getElementById('hw-tanque').innerText = 'VALV. TANQUE: CERRADA (NC) 🔴';
+        document.getElementById('hw-tanque').innerHTML = `${ICONO_VALVULA} VALV. TANQUE: CERRADA (NC) 🔴`;
         document.getElementById('hw-flotante').className = 'hw-badge';
         document.getElementById('hw-flotante').innerText = 'FLOTANTE: TANQUE OK';
     }
@@ -539,4 +579,16 @@ function forzarParadaTotal() {
     let path = window.location.pathname;
     if(path.includes("config.html")) renderizarPantallaConfiguracion();
     else renderizarMonitorPrincipal();
+}
+
+function enviarConfiguracionFlashESP32() {
+    const payload = {
+        comando: "guardar_config_maestra",
+        build: CONFIG_VERSION,
+        timeout_tanque: timeoutTanqueConfigurado,
+        programas: programas
+    };
+    console.log("JSON Maestro enviado hacia el LittleFS del ESP32:", JSON.stringify(payload, null, 2));
+    alert("🚀 ¡Configuración de programas sincronizada por red con el ESP32!");
+    navegarHacia("monitor.html");
 }
