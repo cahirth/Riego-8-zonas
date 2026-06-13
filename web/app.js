@@ -1,10 +1,10 @@
 // ============================================================================
 // FIRMWARE FRONTEND: Riego Hidráulico TLC
-// VERSION: v2.7.2 (Build: 20260613-2020)
-// DESCRIPCIÓN: Versión de Estabilidad Garantizada. SVGs Limpios sin errores de parseo.
+// VERSION: v2.7.3 (Build: 20260613-2025)
+// DESCRIPCIÓN: Interfaz compacta unificada. Botonera superior en una sola línea.
 // ============================================================================
 
-const CONFIG_VERSION = "v2.7.2 (Build: 20260613-2020)";
+const CONFIG_VERSION = "v2.7.3 (Build: 20260613-2025)";
 
 window.cicloInterval = null;
 window.tanqueInterval = null;
@@ -12,7 +12,7 @@ window.tanqueInterval = null;
 const diasSemana = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 const nombresDiasLargos = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-// --- ICONOGRAFÍA VECTORIAL INDUSTRIAL XL (CORREGIDA Y COMPROBADA) ---
+// --- ICONOGRAFÍA VECTORIAL INDUSTRIAL XL ---
 const ICONO_ASPERSOR_JPG = `<svg viewBox="0 0 100 100" style="width:36px; height:36px; margin-bottom:6px; color:inherit;">
     <path fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" d="M50 90V55M35 55h30v8H35z"/>
     <rect x="46" y="38" width="8" height="17" fill="currentColor"/>
@@ -64,7 +64,7 @@ let ajusteEstacionalTLC = 100;
 
 function trazarVersionCompilacion() {
     console.log(
-        `%c 💧 TLC SYSTEM v2.7.2 — Compilación Estable Exitosa `,
+        `%c 💧 TLC SYSTEM v2.7.3 — Compilación Compacta Exitosa `,
         "background: #1565c0; color: #ffffff; font-weight: bold; padding: 6px; border-radius: 4px;"
     );
 }
@@ -169,38 +169,24 @@ function renderizarMonitorPrincipal() {
 
     const esBloqueadoPorTanque = sistemaEstado.startsWith('pausa_tanque') || sistemaEstado === 'llenado_puro';
 
-    // Panel de control superior (Flexbox limpio para evitar problemas de scroll)
-    const blockBotones = document.createElement('div');
-    blockBotones.style.display = "flex";
-    blockBotones.style.flexDirection = "column";
-    blockBotones.style.gap = "8px";
-    blockBotones.style.marginBottom = "15px";
-
-    const fila1 = document.createElement('div');
-    fila1.style.display = "flex";
-    fila1.style.gap = "6px";
-    fila1.innerHTML = `
-        <button class="btn" style="background:#0288d1; flex:1; padding:10px 2px; font-size:12px; font-weight:bold;" onclick="navegarHacia('config.html')">⚙️ Config</button>
-        <button class="btn" style="background:#4caf50; flex:1; padding:10px 2px; font-size:12px; font-weight:bold;" onclick="enviarConfiguracionFlashESP32()">💾 Sincro</button>
-        <button class="btn" style="background:#7b1fa2; flex:1; padding:10px 2px; font-size:12px; font-weight:bold;" onclick="ejecutarLlenadoSecuencial()">🚰 Llenar</button>
-    `;
-    blockBotones.appendChild(fila1);
-
-    const fila2 = document.createElement('div');
-    fila2.style.display = "flex";
-    fila2.style.gap = "6px";
+    // CONFIGURACIÓN DE UNA SOLA LÍNEA FLUIDA (Punto 2)
+    const filaUnicaComandos = document.createElement('div');
+    filaUnicaComandos.style.display = "flex";
+    filaUnicaComandos.style.gap = "5px";
+    filaUnicaComandos.style.marginBottom = "15px";
     
-    const textoBotonFlotante = tanqueLlamando ? '🟢 Tanque OK' : '⚠️ Simular Tanque';
+    const textoBotonFlotante = tanqueLlamando ? '🟢 OK' : '⚠️ Tanque';
     const colorBotonFlotante = tanqueLlamando ? 'var(--success)' : 'var(--warning)';
     
-    fila2.innerHTML = `
-        <button class="btn" style="background:var(--danger); color:white; flex:1; padding:12px 4px; font-size:12px; font-weight:800;" onclick="forzarParadaTotal()">🚨 EMERGENCIA</button>
-        <button class="btn" id="btn-sim-flotante" style="background:${colorBotonFlotante}; color:var(--dark); flex:1; padding:12px 4px; font-size:12px; font-weight:800;" onclick="gestionarFlotanteSimulado()">${textoBotonFlotante}</button>
+    filaUnicaComandos.innerHTML = `
+        <button class="btn" style="background:#0288d1; flex:1; padding:10px 2px; font-size:11px; font-weight:bold;" onclick="navegarHacia('config.html')">⚙️ Config</button>
+        <button class="btn" style="background:#4caf50; flex:1; padding:10px 2px; font-size:11px; font-weight:bold;" onclick="enviarConfiguracionFlashESP32()">💾 Sincro</button>
+        <button class="btn" style="background:#7b1fa2; flex:1; padding:10px 2px; font-size:11px; font-weight:bold;" onclick="ejecutarLlenadoSecuencial()">🚰 Llenar</button>
+        <button class="btn" id="btn-sim-flotante" style="background:${colorBotonFlotante}; color:var(--dark); flex:1; padding:10px 2px; font-size:11px; font-weight:800;" onclick="gestionarFlotanteSimulado()">${textoBotonFlotante}</button>
     `;
-    blockBotones.appendChild(fila2);
-    container.appendChild(blockBotones);
+    container.appendChild(filaUnicaComandos);
 
-    // Grilla de Válvulas Manuales
+    // Grilla de Válvulas del Colector
     const titleManual = document.createElement('div');
     titleManual.className = "manual-section-title";
     titleManual.innerText = "Zonas Físicas del Colector (Prueba Manual Directa)";
@@ -222,25 +208,10 @@ function renderizarMonitorPrincipal() {
     });
     container.appendChild(gridZonas);
 
-    // Slider de tiempo manual único
-    const cardManualSlider = document.createElement('div');
-    cardManualSlider.className = "zone-card";
-    cardManualSlider.style.marginTop = "12px";
-    cardManualSlider.style.marginBottom = "20px";
-    cardManualSlider.style.border = "1px solid #0288d1";
-    cardManualSlider.innerHTML = `
-        <div class="zone-name" style="color: #0288d1; font-weight: bold;">Tiempo de Activación Manual</div>
-        <div class="timer-control" style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
-            <span style="font-size: 13px; color: #555;">Duración:</span>
-            <input type="range" min="1" max="60" value="${tiempoManualGlobalConfigurado}" id="input-tiempo-manual-global" style="flex-grow: 1; margin: 0 15px;" oninput="actualizarDisplayTiempoManualGlobal(this.value)">
-            <span class="time-display" id="display-tiempo-manual-global" style="font-weight: bold; color: #0288d1; font-size: 16px; min-width: 35px; text-align: right;">${tiempoManualGlobalConfigurado}m</span>
-        </div>
-    `;
-    container.appendChild(cardManualSlider);
-
-    // Listado de Programas con Escalado TLC
+    // Programas Automáticos TLC (El slider inferior del punto 3 fue eliminado por completo)
     const titleProgs = document.createElement('div');
     titleProgs.className = "manual-section-title";
+    titleProgs.style.marginTop = "15px";
     titleProgs.innerText = `Programas Automáticos (Ajuste Estacional TLC: ${ajusteEstacionalTLC}%)`;
     container.appendChild(titleProgs);
 
