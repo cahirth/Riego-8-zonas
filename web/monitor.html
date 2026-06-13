@@ -16,7 +16,7 @@
             <div class="status-box">
                 <div class="status-title" id="display-fecha-hoy">Cargando fecha...</div>
                 <div id="status-text" class="status-current">🏠 EN ESPERA (STANDBY)</div>
-                <div class="progress-container" id="progress-wrapper">
+                <div class="progress-container" id="progress-wrapper" style="display: none;">
                     <div class="progress-bar" id="cycle-progress"></div>
                 </div>
                 <div id="timer-remaining" style="font-size:14px; color:#555; margin-top:4px; font-weight:bold; text-align:center;"></div>
@@ -30,6 +30,11 @@
             
             <div id="manual-buttons-container"></div>
         </div>
+        
+        <div id="tlc-version-fixed-badge" style="text-align: center; font-size: 10px; color: #aaa; padding: 4px 0; background: #fafafa; border-top: 1px solid #eee; font-family: monospace;">
+            Firmware UI: v2.7.4-STABLE-CONTROL
+        </div>
+
         <div class="nav-bar">
             <div class="nav-item active" style="cursor: pointer;" onclick="navegarHacia('monitor.html')">
                 <svg viewBox="0 0 24 24"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></svg> Monitor
