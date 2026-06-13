@@ -1,10 +1,10 @@
 // ============================================================================
 // FIRMWARE FRONTEND: Riego Hidráulico TLC
-// VERSION: v2.0.1 (Build: 20260613-1830)
-// DESCRIPCIÓN: Motor Multiprograma unificado sin fugas de referencia de ruteo
+// VERSION: v2.0.2 (Build: 20260613-1850)
+// DESCRIPCIÓN: Corrección estricta de variables del motor multiprograma
 // ============================================================================
 
-const CONFIG_VERSION = "v2.0.1 (Build: 20260613-1830)";
+const CONFIG_VERSION = "v2.0.2 (Build: 20260613-1850)";
 
 const diasSemana = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 const nombresDiasLargos = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -172,49 +172,52 @@ function abrirEditorPrograma(id) {
     document.getElementById('modal-start-time').value = prog.start_time;
 
     const selectorDias = document.getElementById('modal-days-selector');
-    selectorDias.innerHTML = '';
-    diasSemana.forEach((dia, idx) => {
-        const esSeleccionado = prog.dias.includes(idx);
-        const btn = document.createElement('div');
-        btn.className = `day-btn ${esSeleccionado ? 'selected' : ''}`;
-        btn.innerText = dia;
-        btn.onclick = () => {
-            if(prog.dias.includes(idx)) prog.dias = prog.dias.filter(d => d !== idx);
-            else prog.dias.push(idx);
-            btn.classList.toggle('selected');
-        };
-        selectorDias.appendChild(btn);
-    });
+    if(selectorDias) {
+        selectorDias.innerHTML = '';
+        diasSemana.forEach((dia, idx) => {
+            const esSeleccionado = prog.dias.includes(idx);
+            const btn = document.createElement('div');
+            btn.className = `day-btn ${esSeleccionado ? 'selected' : ''}`;
+            btn.innerText = dia;
+            btn.onclick = () => {
+                if(prog.dias.includes(idx)) prog.dias = prog.dias.filter(d => d !== idx);
+                else prog.dias.push(idx);
+                btn.classList.toggle('selected');
+            };
+            selectorDias.appendChild(btn);
+        });
+    }
 
     const contenedorZonas = document.getElementById('modal-zones-assignment');
-    contenedorZonas.innerHTML = '';
+    if(contenedorZonas) {
+        contenedorZonas.innerHTML = '';
+        zonasMaestras.forEach(zMaestra => {
+            const zonaEnProg = prog.zonas.find(z => z.id === zMaestra.id);
+            const asignada = !!zonaEnProg;
+            const minutosRiego = asignada ? zonaEnProg.min : 0;
 
-    zonasMaestras.forEach(zMaestra => {
-        const zonaEnProg = prog.zonas.find(z => z.id === zMaestra.id);
-        const asignada = !!zonaEnProg;
-        const minutosRiego = asignada ? zonaEnProg.min : 0;
+            const row = document.createElement('div');
+            row.className = "zone-card";
+            row.style.background = asignada ? "#e8f5e9" : "#f9f9f9";
+            row.style.border = asignada ? "1px solid var(--success)" : "1px solid #ddd";
+            row.style.marginBottom = "8px";
 
-        const row = document.createElement('div');
-        row.className = "zone-card";
-        row.style.background = asignada ? "#e8f5e9" : "#f9f9f9";
-        row.style.border = asignada ? "1px solid var(--success)" : "1px solid #ddd";
-        row.style.marginBottom = "8px";
-
-        row.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <label style="font-weight:bold; color:var(--dark);">
-                    <input type="checkbox" id="chk-zona-${zMaestra.id}" ${asignada ? 'checked' : ''} onchange="toggleInclusionZonaFisica(${zMaestra.id})"> 
-                    ${zMaestra.nombre}
-                </label>
-                <span class="time-display" id="lbl-min-prog-${zMaestra.id}" style="color:${asignada ? 'var(--success)':'#aaa'}">${minutosRiego}m</span>
-            </div>
-            <div style="display:flex; align-items:center; gap:10px;">
-                <span style="font-size:11px; color:#777;">Tiempo:</span>
-                <input type="range" min="1" max="60" value="${minutosRiego || 5}" id="slide-zona-${zMaestra.id}" ${!asignada ? 'disabled':''} style="flex-grow:1;" oninput="cambiarMinutosZonaPrograma(${zMaestra.id}, this.value)">
-            </div>
-        `;
-        contenedorZonas.appendChild(row);
-    });
+            row.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <label style="font-weight:bold; color:var(--dark);">
+                        <input type="checkbox" id="chk-zona-${zMaestra.id}" ${asignada ? 'checked' : ''} onchange="toggleInclusionZonaFisica(${zMaestra.id})"> 
+                        ${zMaestra.nombre}
+                    </label>
+                    <span class="time-display" id="lbl-min-prog-${zMaestra.id}" style="color:${asignada ? 'var(--success)':'#aaa'}">${minutosRiego}m</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span style="font-size:11px; color:#777;">Tiempo:</span>
+                    <input type="range" min="1" max="60" value="${minutosRiego || 5}" id="slide-zona-${zMaestra.id}" ${!asignada ? 'disabled':''} style="flex-grow:1;" oninput="cambiarMinutosZonaPrograma(${zMaestra.id}, this.value)">
+                </div>
+            `;
+            contenedorZonas.appendChild(row);
+        });
+    }
 
     if(!programas.find(p => p.id === id)) {
         programaEditandoId = "NUEVO";
@@ -247,10 +250,12 @@ function toggleInclusionZonaFisica(idZona) {
 }
 
 function cambiarMinutosZonaPrograma(idZona, valor) {
-    const prog = programaEditandoId === "NUEVO" ? window.tempNuevoProg : programas.find(p => p.id === programaEditandoId);
-    document.getElementById(`lbl-min-prog-${idZona}`).innerText = valor + "m";
-    let zona = prog.zonas.find(z => z.id === idZona);
-    if(zona) zona.min = parseInt(valor);
+    const prog = programaEditandoId === "NUEVO" ? window.tempNuevoProg : programas.find(p => p.id === programmeEditandoId);
+    if(prog) {
+        document.getElementById(`lbl-min-prog-${idZona}`).innerText = valor + "m";
+        let zona = prog.zonas.find(z => z.id === idZona);
+        if(zona) zona.min = parseInt(valor);
+    }
 }
 
 function cerrarEditorModal() {
@@ -267,7 +272,7 @@ function guardarCambiosPrograma() {
         window.tempNuevoProg.start_time = time;
         programas.push(window.tempNuevoProg);
     } else {
-        let prog = programas.find(p => p.id === programmeEditandoId);
+        let prog = programas.find(p => p.id === programaEditandoId);
         if(prog) { prog.nombre = name; prog.start_time = time; }
     }
 
@@ -389,7 +394,7 @@ function ejecutarLlenadoSecuencial() {
                     arrancarBucleTanque(timeoutTanqueConfigurado * 60);
                 }
             }, 500);
-            renderizarMonitorPrincipal();
+            renderizarBotonesManualesEmulados();
         }, 500);
     } else {
         sistemaEstado = 'llenado_puro';
@@ -481,23 +486,7 @@ function forzarParadaTotal() {
         document.getElementById('hw-flotante').innerText = 'FLOTANTE: TANQUE OK';
     }
     actualizarFechaHoy();
-    renderBotonesSegunRuta();
-}
-
-function renderBotonesSegunRuta() {
     let path = window.location.pathname;
     if(path.includes("config.html")) renderizarPantallaConfiguracion();
     else renderizarMonitorPrincipal();
-}
-
-function enviarConfiguracionFlashESP32() {
-    const payload = {
-        comando: "guardar_config_maestra",
-        build: CONFIG_VERSION,
-        timeout_tanque: timeoutTanqueConfigurado,
-        programas: programas
-    };
-    console.log("JSON Maestro enviado hacia el LittleFS del ESP32:", JSON.stringify(payload, null, 2));
-    alert("🚀 ¡Configuración de programas sincronizada por red con el ESP32!");
-    navegarHacia("monitor.html");
 }
