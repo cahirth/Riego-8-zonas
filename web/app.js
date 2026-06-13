@@ -1,10 +1,10 @@
 // ============================================================================
 // FIRMWARE FRONTEND: Riego Hidráulico TLC
-// VERSION: v2.2.5 (Build: 20260613-2115)
-// DESCRIPCIÓN: Integración de iconografía industrial personalizada basada en JPGs
+// VERSION: v2.2.6 (Build: 20260613-2015)
+// DESCRIPCIÓN: Íconos SVG rediseñados desde cero basados en las fotos reales del hardware
 // ============================================================================
 
-const CONFIG_VERSION = "v2.2.5 (Build: 20260613-2115)";
+const CONFIG_VERSION = "v2.2.6 (Build: 20260613-2015)";
 
 window.cicloInterval = null;
 window.tanqueInterval = null;
@@ -12,10 +12,24 @@ window.tanqueInterval = null;
 const diasSemana = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 const nombresDiasLargos = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-// ÍCONOS SVG PERSONALIZADOS BASADOS EN TUS FOTOS (CON DETALLE INDUSTRIAL)
-const ICONO_ASPERSOR_JPG = `<svg viewBox="0 0 24 24" style="width:28px; height:28px; margin-bottom:4px; color:inherit;"><path fill="currentColor" d="M11 2h2v4h-2V2m-3.5 3.5l1.41 1.41L6.05 9.76 4.64 8.35 7.5 5.5M16.5 5.5l2.85 2.85-1.41 1.41-2.85-2.85 1.41-1.41M12 7a5 5 0 0 1 5 5c0 .73-.16 1.42-.44 2.05l2.44 2.44-1.42 1.42-2.44-2.44A5 5 0 0 1 12 17a5 5 0 0 1-5-5c0-.73.16-1.42.44-2.05L5 7.51l1.42-1.42 2.44 2.44A5 5 0 0 1 12 7m0 2a3 3 0 0 0-3 3c0 .41.08.8.23 1.16l3.93-3.93c-.36-.15-.75-.23-1.16-.23m1.16 1.16l-3.93 3.93c.36.15.75.23 1.16.23a3 3 0 0 0 3-3c0-.41-.08-.8-.23-1.16z"/></svg>`;
-const ICONO_BOMBA_JPG = `<svg viewBox="0 0 24 24" style="width:24px; height:24px; vertical-align:middle; margin-right:8px;"><path fill="currentColor" d="M4 11h3v2H4v-2m15-4h-3v10h3c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2m-5 0h-2v10h2V7m-5 2h2v6H9V9m-4-5h14c1.66 0 3 1.34 3 3v10c0 1.66-1.34 3-3 3H5c-1.66 0-3-1.34-3-3V7c0-1.66 1.34-3 3-3z"/></svg>`;
-const ICONO_FLOTANTE_JPG = `<svg viewBox="0 0 24 24" style="width:24px; height:24px; vertical-align:middle; margin-right:8px;"><path fill="currentColor" d="M12 2A2 2 0 0 1 14 4V7.16C17.45 7.82 20 10.85 20 14.5A8 8 0 0 1 12 22A8 8 0 0 1 4 14.5C4 10.85 6.55 7.82 10 7.16V4A2 2 0 0 1 12 2M12 9.5A5 5 0 0 0 7 14.5A5 5 0 0 0 12 19.5A5 5 0 0 0 17 14.5A5 5 0 0 0 12 9.5z"/></svg>`;
+// --- NUEVOS ÍCONOS SVG BIEN DETALLADOS BASADOS FIELMENTE EN TUS FOTOS ---
+
+// Aspersor sectorial de impacto mecánico con resorte y boquilla de salida
+const ICONO_ASPERSOR_JPG = `<svg viewBox="0 0 32 32" style="width:28px; height:28px; margin-bottom:4px; color:inherit;">
+    <path fill="currentColor" d="M14 26h4v4h-4zm-2-6h8v4h-8zm3-11.85V12h2V8.15a4 4 0 0 0 3.65-2.5l-1.88-.68A2 2 0 0 1 17 6.18V4h-2v2.18a2 2 0 0 1-1.77 1.21l-1.88.68A4 4 0 0 0 15 8.15zM24 13h-4.17l-1.5-3h4.67zm-11.33 0l-1.5-3H6.5v3zM5 15h22v4H5z"/>
+    <path fill="currentColor" opacity="0.4" d="M19.5 20h-7l-1-6h9zM28 8.5a4.5 4.5 0 0 0-4.5 4.5h1a3.5 3.5 0 0 1 3.5-3.5zM4 13a4.5 4.5 0 0 0 4.5-4.5v-1A3.5 3.5 0 0 1 5 11z"/>
+</svg>`;
+
+// Bomba centrífuga con caja superior, cuerpo de voluta y aletas de motor
+const ICONO_BOMBA_JPG = `<svg viewBox="0 0 32 32" style="width:24px; height:24px; vertical-align:middle; margin-right:8px;">
+    <path fill="currentColor" d="M28 14h-2v-3a1 1 0 0 0-1-1h-6v8h6a1 1 0 0 0 1-1v-3h2a2 2 0 0 0 2-2v-1a2 2 0 0 0-2-2zm-12-6h-3V4H9v4H6a4 4 0 0 0-4 4v7a4 4 0 0 0 4 4h1a4 4 0 0 0 4-4v-1h5v2a2 2 0 0 0 2 2h8v-2h-8v-3h8v-2h-8v-3h8v-2h-8V8a2 2 0 0 0-2-2zM6 21a2 2 0 1 1 2-2 2 2 0 0 1-2 2z"/>
+</svg>`;
+
+// Boya flotante eléctrica de nivel con salida de cable superior y contrapeso
+const ICONO_FLOTANTE_JPG = `<svg viewBox="0 0 32 32" style="width:24px; height:24px; vertical-align:middle; margin-right:8px;">
+    <path fill="currentColor" d="M15 2h2v4h-2zm-3 5h8v3h-8zm-2 5h12v12A6 6 0 0 1 16 28a6 6 0 0 1-6-6zm3 3a3 3 0 1 0 3 3 3 3 0 0 0-3-3z"/>
+</svg>`;
+
 
 let zonasMaestras = [];
 for (let i = 1; i <= 8; i++) {
@@ -41,7 +55,7 @@ let tiempoManualGlobalConfigurado = 5;
 function trazarVersionCompilacion() {
     console.log(
         `%c 💧 TLC MULTIPROGRAMA CUSTOM — Active Version: ${CONFIG_VERSION} `,
-        "background: #9C27B0; color: #ffffff; font-weight: bold; padding: 4px; border-radius: 4px;"
+        "background: #0288d1; color: #ffffff; font-weight: bold; padding: 4px; border-radius: 4px;"
     );
 }
 
@@ -148,7 +162,6 @@ function renderizarMonitorPrincipal() {
         btn.className = `btn-manual ${extraClass}`;
         btn.onclick = () => { if(!esBloqueadoPorTanque) toggleZonaManualDirecta(zona.id); };
         
-        // INTEGRACIÓN FINAL: El botón de zona dibuja el aspersor sectorial de tu foto
         btn.innerHTML = `
             ${ICONO_ASPERSOR_JPG}
             <span>${zona.nombre}</span>
