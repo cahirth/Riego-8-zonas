@@ -20,7 +20,6 @@
                     <div class="progress-bar" id="cycle-progress"></div>
                 </div>
                 <div id="timer-remaining" style="font-size: 14px; color: #555;"></div>
-                <div id="display-proximo-riego" style="font-size: 12px; color: var(--primary); font-weight: bold; margin-top: 5px;"></div>
             </div>
             <div class="hardware-grid">
                 <div class="hw-badge" id="hw-flotante">FLOTANTE: TANQUE OK</div>
@@ -35,11 +34,8 @@
             <button class="btn btn-stop" onclick="forzarParadaTotal()">
                 <svg viewBox="0 0 24 24"><path d="M18,18H6V6H18V18Z"/></svg> STOP DE EMERGENCIA
             </button>
-            <div class="manual-section-title">Activación Manual por Zona (Secuencial)</div>
-            <div class="manual-grid" id="manual-buttons-container"></div>
-            <button class="btn btn-start" id="btn-auto-master" onclick="ejecutarCicloAutomatico()">
-                <svg viewBox="0 0 24 24"><path d="M8,5V19L19,12L8,5Z"/></svg> Lanzar Ciclo Programado Completo
-            </button>
+            
+            <div id="manual-buttons-container"></div>
         </div>
         <div class="nav-bar">
             <div class="nav-item active" style="cursor: pointer;" onclick="navegarA('monitor.html')">
