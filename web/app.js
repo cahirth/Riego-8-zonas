@@ -1,10 +1,10 @@
 // ============================================================================
 // FIRMWARE FRONTEND: Riego Hidráulico TLC
-// VERSION: v2.1.0 (Build: 20260613-2115)
-// DESCRIPCIÓN: Implementación de slider de tiempo manual global en el Dashboard
+// VERSION: v2.1.1 (Build: 20260613-2030)
+// DESCRIPCIÓN: Optimización de la secuencia de guardado y mitigación de alertas del DOM
 // ============================================================================
 
-const CONFIG_VERSION = "v2.1.0 (Build: 20260613-2115)";
+const CONFIG_VERSION = "v2.1.1 (Build: 20260613-2030)";
 
 window.cicloInterval = null;
 window.tanqueInterval = null;
@@ -31,8 +31,6 @@ let tiempoLlenadoTanqueRestante = 0;
 let timeoutTanqueConfigurado = 1; 
 let listaZonasPrioridad = [];
 let tanqueLlamando = false;
-
-// NUEVA VARIABLE GLOBAL: Almacena el tiempo del slider del monitor (por defecto 5 min)
 let tiempoManualGlobalConfigurado = 5;
 
 function trazarVersionCompilacion() {
@@ -46,7 +44,7 @@ function local_guardarEstadoGlobal() {
     const backup = {
         programas: programas,
         timeoutTanqueConfigurado: timeoutTanqueConfigurado,
-        tiempoManualGlobalConfigurado: tiempoManualGlobalConfigurado // Persiste el slider manual
+        tiempoManualGlobalConfigurado: tiempoManualGlobalConfigurado
     };
     localStorage.setItem('TLC_RIEGO_MULTI_DATA', JSON.stringify(backup));
 }
@@ -62,7 +60,6 @@ function local_recuperarEstadoGoblal() {
             tiempoManualGlobalConfigurado = cache.tiempoManualGlobalConfigurado;
         }
     }
-    // Sincroniza el slider del monitor si existe físicamente en pantalla
     const sliderInput = document.getElementById('input-tiempo-manual-global');
     const sliderDisplay = document.getElementById('display-tiempo-manual-global');
     if(sliderInput && sliderDisplay) {
@@ -71,7 +68,6 @@ function local_recuperarEstadoGoblal() {
     }
 }
 
-// NUEVA FUNCIÓN: Actualiza el valor del slider manual en tiempo real
 function actualizarDisplayTiempoManualGlobal(valor) {
     tiempoManualGlobalConfigurado = parseInt(valor);
     const display = document.getElementById('display-tiempo-manual-global');
@@ -82,7 +78,7 @@ function actualizarDisplayTiempoManualGlobal(valor) {
 function actualizarFechaHoy() {
     const ahora = new Date();
     const hoyIdx = ahora.getDay();
-    const fechaString = ahora.toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
+    const fechaString = Pattern = ahora.toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
     const labelFecha = document.getElementById('display-fecha-hoy');
     if(labelFecha) labelFecha.innerText = `Hoy: ${nombresDiasLargos[hoyIdx]} ${fechaString}`;
 }
@@ -284,7 +280,6 @@ function cambiarMinutosZonaPrograma(idZona, valor) {
     }
 }
 
-// CORRECCIÓN DE FUNCIÓN: Unificada en castellano estricto
 function guardarCambiosPrograma() {
     const name = document.getElementById('modal-nombre-prog').value;
     const time = document.getElementById('modal-start-time').value;
@@ -298,11 +293,16 @@ function guardarCambiosPrograma() {
         if(prog) { prog.nombre = name; prog.start_time = time; }
     }
 
+    // SECUENCIA OPTIMIZADA: Guarda primero, cierra después y actualiza de manera aislada
     local_guardarEstadoGlobal();
     cerrarEditorModal();
+    
     let path = window.location.pathname;
-    if(path.includes("config.html")) renderizarPantallaConfiguracion();
-    else renderizarMonitorPrincipal();
+    if(path.includes("config.html")) {
+        renderizarPantallaConfiguracion();
+    } else {
+        renderizarMonitorPrincipal();
+    }
 }
 
 function eliminarPrograma(id) {
@@ -320,8 +320,6 @@ function toggleZonaManualDirecta(zonaId) {
     forzarParadaTotal();
     sistemaEstado = 'riego_manual';
     zonaActivaId = zonaId;
-    
-    // CORRECCIÓN: Asigna dinámicamente el valor actual del slider del monitor
     tiempoRestanteActual = tiempoManualGlobalConfigurado; 
     tiempoInicialAsignado = tiempoManualGlobalConfigurado; 
 
@@ -381,12 +379,10 @@ function arrancarBucleTiempoGenerico(esAutomatico) {
     window.cicloInterval = setInterval(() => {
         if (tiempoRestanteActual > 0) {
             document.getElementById('timer-remaining').innerText = `Tiempo restante: ${tiempoRestanteActual} min`;
-            
             if(bar && tiempoInicialAsignado > 0) {
                 let porcentajeAcumulado = ((tiempoInicialAsignado - tiempoRestanteActual) / tiempoInicialAsignado) * 100;
                 bar.style.width = `${porcentajeAcumulado}%`;
             }
-            
             tiempoRestanteActual--;
         } else {
             clearInterval(window.cicloInterval);
@@ -532,7 +528,6 @@ function forzarParadaTotal() {
         document.getElementById('hw-flotante').innerText = 'FLOTANTE: TANQUE OK';
     }
     
-    // Mantiene la consistencia del slider manual al reconstruir el monitor
     const sliderInput = document.getElementById('input-tiempo-manual-global');
     const sliderDisplay = document.getElementById('display-tiempo-manual-global');
     if(sliderInput && sliderDisplay) {
@@ -544,16 +539,4 @@ function forzarParadaTotal() {
     let path = window.location.pathname;
     if(path.includes("config.html")) renderizarPantallaConfiguracion();
     else renderizarMonitorPrincipal();
-}
-
-function enviarConfiguracionFlashESP32() {
-    const payload = {
-        comando: "guardar_config_maestra",
-        build: CONFIG_VERSION,
-        timeout_tanque: timeoutTanqueConfigurado,
-        programas: programas
-    };
-    console.log("JSON Maestro enviado hacia el LittleFS del ESP32:", JSON.stringify(payload, null, 2));
-    alert("🚀 ¡Configuración de programas sincronizada por red con el ESP32!");
-    navegarHacia("monitor.html");
 }
