@@ -6,7 +6,6 @@
     <title>Riego TLC - Ajustes</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* Estilos específicos para la ventana flotante del editor */
         .modal-screen-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:2000; overflow-y:auto; padding:20px 10px; box-sizing:border-box; }
         .modal-content-card { background:#fff; max-width:600px; margin:0 auto; border-radius:12px; padding:20px; box-shadow:0 5px 15px rgba(0,0,0,0.3); }
     </style>
@@ -79,10 +78,10 @@
         </div>
 
         <div class="nav-bar">
-            <div class="nav-item" style="cursor: pointer;" onclick="navegarA('monitor.html')">
+            <div class="nav-item" style="cursor: pointer;" onclick="navegarHacia('monitor.html')">
                 <svg viewBox="0 0 24 24"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></svg> Monitor
             </div>
-            <div class="nav-item active" style="cursor: pointer;" onclick="navegarA('config.html')">
+            <div class="nav-item active" style="cursor: pointer;" onclick="navegarHacia('config.html')">
                 <svg viewBox="0 0 24 24"><path d="M12,8A4,4 0 1,0 16,12A4,4 0 0,0 12,8M12,4A10,10 0 1,1 2,12A10,10 0 0,1 12,4Z"/></svg> Ajustes
             </div>
         </div>
@@ -90,11 +89,10 @@
 
     <script src="app.js"></script>
     <script>
-        function renderIndexConfiguracionBase() {
+        window.onload = function() {
             local_recuperarEstadoGoblal();
             renderizarPantallaConfiguracion();
-        }
-        window.onload = renderIndexConfiguracionBase;
+        };
     </script>
 </body>
 </html>
