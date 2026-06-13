@@ -1,10 +1,10 @@
 // ============================================================================
 // FIRMWARE FRONTEND: Riego Hidráulico TLC
-// VERSION: v2.0.4 (Build: 20260613-1950)
-// DESCRIPCIÓN: Unificación estricta de nombres de función para guardado (Castellano)
+// VERSION: v2.0.5 (Build: 20260613-2000)
+// DESCRIPCIÓN: Corrección y re-vinculación de la barra de progreso de tiempo real
 // ============================================================================
 
-const CONFIG_VERSION = "v2.0.4 (Build: 20260613-1950)";
+const CONFIG_VERSION = "v2.0.5 (Build: 20260613-2000)";
 
 window.cicloInterval = null;
 window.tanqueInterval = null;
@@ -26,6 +26,7 @@ let programaEditandoId = null;
 let sistemaEstado = 'idle'; 
 let zonaActivaId = null;
 let tiempoRestanteActual = 0;
+let tiempoInicialAsignado = 0; // NUEVA VARIABLE: Para calcular el % exacto de la barra
 let tiempoLlenadoTanqueRestante = 0; 
 let timeoutTanqueConfigurado = 1; 
 let listaZonasPrioridad = [];
@@ -301,7 +302,8 @@ function toggleZonaManualDirecta(zonaId) {
     forzarParadaTotal();
     sistemaEstado = 'riego_manual';
     zonaActivaId = zonaId;
-    tiempoRestanteActual = 5; 
+    tiempoRestanteActual = 2; // Configurado a 2 minutos base de testeo
+    tiempoInicialAsignado = 2; 
 
     document.getElementById('hw-tanque').className = 'hw-badge closed';
     document.getElementById('hw-tanque').innerText = 'VALV. TANQUE: CERRADA (NC) 🔴';
@@ -327,6 +329,7 @@ function avanzarCicloAutomaticoMulti() {
         let proximaZona = listaZonasPrioridad.shift();
         zonaActivaId = proximaZona.id;
         tiempoRestanteActual = proximaZona.min;
+        tiempoInicialAsignado = proximaZona.min;
 
         document.getElementById('hw-tanque').className = 'hw-badge closed';
         document.getElementById('hw-tanque').innerText = 'VALV. TANQUE: CERRADA (NC) 🔴';
@@ -342,7 +345,15 @@ function avanzarCicloAutomaticoMulti() {
 }
 
 function arrancarBucleTiempoGenerico(esAutomatico) {
-    document.getElementById('progress-wrapper').style.display = 'block';
+    const wrapper = document.getElementById('progress-wrapper');
+    const bar = document.getElementById('cycle-progress');
+    
+    if(wrapper) wrapper.style.display = 'block';
+    if(bar) {
+        bar.className = 'progress-bar';
+        bar.style.width = '0%'; // Resetea visualmente al arrancar
+    }
+
     document.getElementById('status-text').className = 'status-current running';
     document.getElementById('status-text').innerText = `${esAutomatico ? 'AUTO' : 'MANUAL'}: ZONA ${zonaActivaId} 💧`;
 
@@ -350,6 +361,13 @@ function arrancarBucleTiempoGenerico(esAutomatico) {
     window.cicloInterval = setInterval(() => {
         if (tiempoRestanteActual > 0) {
             document.getElementById('timer-remaining').innerText = `Tiempo restante: ${tiempoRestanteActual} min`;
+            
+            // CORRECCIÓN: Dibuja dinámicamente el progreso verde basado en la cuenta regresiva
+            if(bar && tiempoInicialAsignado > 0) {
+                let porcentajeAcumulado = ((tiempoInicialAsignado - tiempoRestanteActual) / tiempoInicialAsignado) * 100;
+                bar.style.width = `${porcentajeAcumulado}%`;
+            }
+            
             tiempoRestanteActual--;
         } else {
             clearInterval(window.cicloInterval);
@@ -421,9 +439,15 @@ function renderizarBotonesManualesEmulados() {
 
 function arrancarBucleTanque(segundosTotales) {
     tiempoLlenadoTanqueRestante = segundosTotales;
-    document.getElementById('progress-wrapper').style.display = 'block';
-    document.getElementById('cycle-progress').className = 'progress-bar paused';
-    document.getElementById('cycle-progress').style.width = '100%';
+    const wrapper = document.getElementById('progress-wrapper');
+    const bar = document.getElementById('cycle-progress');
+    
+    if(wrapper) wrapper.style.display = 'block';
+    if(bar) {
+        bar.className = 'progress-bar paused';
+        bar.style.width = '100%'; // Llenado de tanque pinta la barra completa en naranja
+    }
+
     document.getElementById('status-text').className = 'status-current paused';
     document.getElementById('status-text').innerText = `⚠️ LLENANDO TANQUE`;
 
@@ -458,7 +482,6 @@ function detenerLlenadoSecuencial(porTimeout) {
         }
 
         if (sistemaEstado.startsWith('pausa_tanque')) {
-            document.getElementById('cycle-progress').className = 'progress-bar';
             arrancarBucleTiempoGenerico(sistemaEstado.includes('riego_auto'));
         } else {
             forzarParadaTotal();
@@ -473,6 +496,7 @@ function forzarParadaTotal() {
     sistemaEstado = 'idle';
     zonaActivaId = null;
     tiempoRestanteActual = 0;
+    tiempoInicialAsignado = 0;
     listaZonasPrioridad = [];
     tanqueLlamando = false;
 
