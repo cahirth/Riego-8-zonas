@@ -1,10 +1,10 @@
 // ============================================================================
 // FIRMWARE FRONTEND: Riego Hidráulico TLC
-// VERSION: v2.6.0 (Build: 20260613-2000)
-// DESCRIPCIÓN: Sincronización Estacional Dinámica + Iconos de Hardware de Alta Fidelidad + Limpieza Remanentes
+// VERSION: v2.6.1 (Build: 20260613-2015)
+// DESCRIPCIÓN: Corrección de duplicados en Monitor (Limpieza total de remanentes)
 // ============================================================================
 
-const CONFIG_VERSION = "v2.6.0 (Build: 20260613-2000)";
+const CONFIG_VERSION = "v2.6.1 (Build: 20260613-2015)";
 
 window.cicloInterval = null;
 window.tanqueInterval = null;
@@ -25,7 +25,6 @@ const ICONO_BOMBA_JPG = `<svg viewBox="0 0 100 100" style="width:28px; height:28
     <path fill="currentColor" d="M35 33h45v44H35zM50 20h16v13H50zM18 55h17v6H18zM70 42h10v4H70zm0 10h10v4H70zm0 10h10v4H70z"/>
 </svg>`;
 
-// NUEVO: Icono de Válvula Solenoide de Alta Fidelidad Hidráulica
 const ICONO_VALVULA_SOLENOIDE = `<svg viewBox="0 0 100 100" style="width:28px; height:28px; vertical-align:middle; margin-right:8px;">
     <rect x="38" y="10" width="24" height="26" rx="3" fill="currentColor"/>
     <rect x="46" y="36" width="8" height="10" fill="currentColor"/>
@@ -34,7 +33,6 @@ const ICONO_VALVULA_SOLENOIDE = `<svg viewBox="0 0 100 100" style="width:28px; h
     <path d="M42 56h16v6H42z" fill="none" stroke="#fff" stroke-width="2"/>
 </svg>`;
 
-// NUEVO: Icono de Flotante Mecánico de Boya para Tanque
 const ICONO_FLOTANTE_BOYA = `<svg viewBox="0 0 100 100" style="width:28px; height:28px; vertical-align:middle; margin-right:8px;">
     <path d="M15 25h12v10H15z" fill="currentColor"/>
     <path fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" d="M27 30l38 18"/>
@@ -126,14 +124,12 @@ function actualizarDisplayTimeout(valor) {
     local_guardarEstadoGlobal();
 }
 
-// NUEVO: Actualiza display y refresca la lista de programas en pantalla al instante
 function actualizarDisplayTLC(valor) {
     ajusteEstacionalTLC = parseInt(valor);
     const display = document.getElementById('display-tlc-estacional');
     if(display) display.innerText = valor + "%";
     local_guardarEstadoGlobal();
     
-    // Refresco dinámico para actualizar los cálculos en pantalla inmediatamente
     let path = window.location.pathname;
     if(path.includes("config.html")) {
         renderizarPantallaConfiguracion();
@@ -150,13 +146,9 @@ function actualizarDisplayTiempoManualGlobal(valor) {
 function actualizarFechaHoy() {
     const ahora = new Date();
     const hoyIdx = ahora.getDay();
-    const fechaString = SecuritySafeStringDate(ahora);
+    const fechaString = ahora.toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
     const labelFecha = document.getElementById('display-fecha-hoy');
     if(labelFecha) labelFecha.innerText = `Hoy: ${nombresDiasLargos[hoyIdx]} ${fechaString}`;
-}
-
-function SecuritySafeStringDate(objFecha) {
-    return objFecha.toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
 }
 
 function navegarHacia(destino) {
@@ -177,7 +169,7 @@ function renderizarMonitorPrincipal() {
 
     const esBloqueadoPorTanque = sistemaEstado.startsWith('pausa_tanque') || sistemaEstado === 'llenado_puro';
 
-    // 1. Título de la Grilla de Válvulas
+    // 1. Grilla de Válvulas
     const titleManual = document.createElement('div');
     titleManual.className = "manual-section-title";
     titleManual.innerText = "Zonas Físicas del Colector (Prueba Manual Directa)";
@@ -199,7 +191,7 @@ function renderizarMonitorPrincipal() {
     });
     container.appendChild(gridZonas);
 
-    // 2. Slider Ajuste Manual (Justo abajo de las válvulas 1..8)
+    // 2. Slider Ajuste Manual (Único lugar oficial: justo abajo de la grilla)
     const cardManualSlider = document.createElement('div');
     cardManualSlider.className = "zone-card";
     cardManualSlider.style.marginTop = "12px";
@@ -245,8 +237,6 @@ function renderizarMonitorPrincipal() {
         `;
         container.appendChild(card);
     });
-    
-    // NOTA: Se eliminó el bloque duplicado que se inyectaba al final de la pantalla.
 }
 
 function renderizarPantallaConfiguracion() {
@@ -352,7 +342,7 @@ function toggleInclusionZonaFisica(idZona) {
     const chk = document.getElementById(`chk-zona-${idZona}`);
     const slide = document.getElementById(`slide-zona-${idZona}`);
     const lbl = document.getElementById(`lbl-min-prog-${idZona}`);
-    const prog = programaEditandoId === "NUEVO" ? window.tempNuevoProg : programas.find(p => p.id === programaEditandoId);
+    const prog = programmeEditandoId === "NUEVO" ? window.tempNuevoProg : programas.find(p => p.id === programaEditandoId);
 
     if(chk.checked) {
         slide.disabled = false;
