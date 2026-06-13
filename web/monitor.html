@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Riego TLC - Monitor</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <svg viewBox="0 0 24 24"><path d="M12,2.69C12,2.69 19,11.06 19,15.5A7,7 0 0,1 12,22.5A7,7 0 0,1 5,15.5C5,11.06 12,2.69 12,2.69Z"/></svg>
+            <span>Riego Hidráulico TLC</span>
+        </div>
+        <div class="screen">
+            <div class="status-box">
+                <div class="status-title" id="display-fecha-hoy">Cargando fecha...</div>
+                <div id="status-text" class="status-current">🏠 EN ESPERA (STANDBY)</div>
+                <div class="progress-container" id="progress-wrapper">
+                    <div class="progress-bar" id="cycle-progress"></div>
+                </div>
+                <div id="timer-remaining" style="font-size: 14px; color: #555;"></div>
+                <div id="display-proximo-riego" style="font-size: 12px; color: var(--primary); font-weight: bold; margin-top: 5px;"></div>
+            </div>
+            <div class="hardware-grid">
+                <div class="hw-badge" id="hw-flotante">FLOTANTE: TANQUE OK</div>
+                <div class="hw-badge" id="hw-tanque">VALV. TANQUE: CERRADA (NC) 🔴</div>
+                <div class="hw-badge" id="hw-bomba" style="grid-column: span 2;">BOMBA: OFF</div>
+            </div>
+            <div class="sim-panel">
+                <span style="font-weight: bold; color: var(--warning);">Simulador Hardware:</span>
+                <button id="btn-sim-flotante" class="btn" style="background: var(--warning); width: auto; padding: 8px 15px; font-size: 12px;" onclick="gestionarFlotanteSimulado()">Simular Falta de Agua (Llamar)</button>
+            </div>
+            <br>
+            <button class="btn btn-stop" onclick="forzarParadaTotal()">
+                <svg viewBox="0 0 24 24"><path d="M18,18H6V6H18V18Z"/></svg> STOP DE EMERGENCIA
+            </button>
+            <div class="manual-section-title">Activación Manual por Zona (Secuencial)</div>
+            <div class="manual-grid" id="manual-buttons-container"></div>
+            <button class="btn btn-start" id="btn-auto-master" onclick="ejecutarCicloAutomatico()">
+                <svg viewBox="0 0 24 24"><path d="M8,5V19L19,12L8,5Z"/></svg> Lanzar Ciclo Programado Completo
+            </button>
+        </div>
+        <div class="nav-bar">
+            <a href="monitor.html" class="nav-item active">
+                <svg viewBox="0 0 24 24"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></svg> Monitor
+            </a>
+            <a href="config.html" class="nav-item">
+                <svg viewBox="0 0 24 24"><path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97..."></svg> Ajustes
+            </a>
+        </div>
+    </div>
+    <script src="app.js"></script>
+    <script>
+        window.onload = function() {
+            local_recuperarEstadoGoblal();
+            forzarParadaTotal(); 
+        };
+    </script>
+</body>
+</html>
