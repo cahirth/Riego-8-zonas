@@ -8,10 +8,14 @@
 </head>
 <body>
     <div class="app-container">
-        <div class="header">
-            <svg viewBox="0 0 24 24"><path d="M12,2.69C12,2.69 19,11.06 19,15.5A7,7 0 0,1 12,22.5A7,7 0 0,1 5,15.5C5,11.06 12,2.69 12,2.69Z"/></svg>
-            <span>Riego Hidráulico TLC</span>
+        <div class="header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <svg viewBox="0 0 24 24" style="width: 24px; height: 24px;"><path d="M12,2.69C12,2.69 19,11.06 19,15.5A7,7 0 0,1 12,22.5A7,7 0 0,1 5,15.5C5,11.06 12,2.69 12,2.69Z"/></svg>
+                <span style="font-weight: bold;">Riego Hidráulico TLC</span>
+            </div>
+            <button class="btn" style="width: auto; padding: 6px 12px; margin: 0; font-size: 12px; background: #0288d1; font-weight: bold; border-radius: 4px;" onclick="navegarHacia('config.html')">⚙️ Ajustes</button>
         </div>
+
         <div class="screen">
             <div class="status-box">
                 <div class="status-title" id="display-fecha-hoy">Cargando fecha...</div>
@@ -22,21 +26,13 @@
                 <div id="timer-remaining" style="font-size: 14px; color: #555; margin-top: 4px; font-weight: bold; text-align: center;"></div>
             </div>
             
-            <div class="hardware-grid" style="margin-bottom: 15px;">
-                <div class="hw-badge" id="hw-flotante">FLOTANTE: TANQUE OK</div>
-                <div class="hw-badge" id="hw-tanque">VALV. TANQUE: CERRADA (NC) 🔴</div>
-                <div class="hw-badge" id="hw-bomba" style="grid-column: span 2;">BOMBA: OFF</div>
+            <div class="hardware-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 15px;">
+                <div class="hw-badge" id="hw-flotante" style="font-size: 10px; padding: 6px 4px; text-align: center; font-weight: bold;">FLOTANTE: OK</div>
+                <div class="hw-badge" id="hw-tanque" style="font-size: 10px; padding: 6px 4px; text-align: center; font-weight: bold;">VALV. TQ: CERRADA</div>
+                <div class="hw-badge" id="hw-bomba" style="font-size: 10px; padding: 6px 4px; text-align: center; font-weight: bold;">BOMBA: OFF</div>
             </div>
             
             <div id="manual-buttons-container"></div>
-        </div>
-        <div class="nav-bar">
-            <div class="nav-item active" style="cursor: pointer;" onclick="navegarHacia('monitor.html')">
-                <svg viewBox="0 0 24 24"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></svg> Monitor
-            </div>
-            <div class="nav-item" style="cursor: pointer;" onclick="navegarHacia('config.html')">
-                <svg viewBox="0 0 24 24"><path d="M12,8A4,4 0 1,0 16,12A4,4 0 0,0 12,8M12,4A10,10 0 1,1 2,12A10,10 0 0,1 12,4Z"/></svg> Ajustes
-            </div>
         </div>
     </div>
     <script src="app.js"></script>
