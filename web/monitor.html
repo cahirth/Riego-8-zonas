@@ -36,6 +36,13 @@
             </button>
             
             <div id="manual-buttons-container"></div>
+
+            <div class="manual-section-title" style="margin-top: 20px;">Tiempo de Carrera para Activación Manual</div>
+            <div class="zone-card" style="display: flex; align-items: center; justify-content: space-between; padding: 15px; background: #fff; border-radius: 10px;">
+                <span style="font-size: 14px; font-weight: bold; color: var(--dark);">Duración del riego:</span>
+                <input type="range" min="1" max="60" value="5" id="input-tiempo-manual-global" style="flex-grow: 1; margin: 0 15px;" oninput="actualizarDisplayTiempoManualGlobal(this.value)">
+                <span class="time-display" id="display-tiempo-manual-global" style="font-weight: bold; color: var(--primary); font-size: 18px; width: 50px; text-align: right;">5m</span>
+            </div>
         </div>
         <div class="nav-bar">
             <div class="nav-item active" style="cursor: pointer;" onclick="navegarHacia('monitor.html')">
