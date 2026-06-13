@@ -1,9 +1,10 @@
 // ============================================================================
 // FIRMWARE FRONTEND: Riego Hidráulico TLC
-// VERSION: v2.7.3 (Build: 20260613-2025)
+// VERSION: v2.7.3-STABLE-RESTORE (Build: 20260613-2210)
+// DESCRIPCIÓN: Restauración certificada. Tag visual de control de versión activo.
 // ============================================================================
 
-const CONFIG_VERSION = "v2.7.3 (Build: 20260613-2025)";
+const CONFIG_VERSION = "v2.7.3-STABLE-RESTORE (Build: 20260613-2210)";
 
 window.cicloInterval = null;
 window.tanqueInterval = null;
@@ -62,7 +63,25 @@ let tiempoManualGlobalConfigurado = 5;
 let ajusteEstacionalTLC = 100; 
 
 function trazarVersionCompilacion() {
-    console.log(`%c 💧 TLC SYSTEM v2.7.3 — Modo Estable Restablecido `, "background: #1565c0; color: #ffffff; font-weight: bold; padding: 6px; border-radius: 4px;");
+    console.log(
+        `%c 💧 TLC CERTIFIED ENGINE — Active Version: ${CONFIG_VERSION} `,
+        "background: #2e7d32; color: #ffffff; font-weight: bold; padding: 6px; border-radius: 4px;"
+    );
+    inyectarBadgeVersionEnPantalla();
+}
+
+// Inyección del indicador visual para saber exactamente dónde estás parado
+function inyectarBadgeVersionEnPantalla() {
+    let viejoBadge = document.getElementById('tlc-version-badge-footer');
+    if (viejoBadge) viejoBadge.remove();
+
+    const badge = document.createElement('div');
+    badge.id = 'tlc-version-badge-footer';
+    badge.style.cssText = "text-align: center; font-size: 11px; color: #888; margin-top: 25px; padding: 8px 0; border-top: 1px solid #eee; font-family: monospace;";
+    badge.innerText = `Firmware UI: v2.7.3-STABLE (Restore)`;
+    
+    const container = document.querySelector('.screen');
+    if (container) container.appendChild(badge);
 }
 
 function local_guardarEstadoGlobal() {
@@ -85,6 +104,21 @@ function local_recuperarEstadoGoblal() {
         if(cache.tiempoManualGlobalConfigurado) tiempoManualGlobalConfigurado = cache.tiempoManualGlobalConfigurado;
         if(cache.ajusteEstacionalTLC !== undefined) ajusteEstacionalTLC = cache.ajusteEstacionalTLC;
     }
+    
+    const sliderInput = document.getElementById('input-tiempo-manual-global');
+    const sliderDisplay = document.getElementById('display-tiempo-manual-global');
+    if(sliderInput && sliderDisplay) {
+        sliderInput.value = tiempoManualGlobalConfigurado;
+        sliderDisplay.innerText = tiempoManualGlobalConfigurado + "m";
+    }
+
+    const tlcInput = document.getElementById('input-tlc-estacional');
+    const tlcDisplay = document.getElementById('display-tlc-estacional');
+    if(tlcInput && tlcDisplay) {
+        tlcInput.value = ajusteEstacionalTLC;
+        tlcDisplay.innerText = ajusteEstacionalTLC + "%";
+    }
+    
     inyectarIconosEstaticosHardware();
 }
 
@@ -105,11 +139,22 @@ function actualizarDisplayTimeout(valor) {
     local_guardarEstadoGlobal();
 }
 
-// ... Resto de las funciones lógicas nativas v2.7.x ...
 function actualizarDisplayTLC(valor) {
     ajusteEstacionalTLC = parseInt(valor);
     const display = document.getElementById('display-tlc-estacional');
     if(display) display.innerText = valor + "%";
+    local_guardarEstadoGlobal();
+    
+    let path = window.location.pathname;
+    if(path.includes("config.html")) {
+        renderizarPantallaConfiguracion();
+    }
+}
+
+function actualizarDisplayTiempoManualGlobal(valor) {
+    tiempoManualGlobalConfigurado = parseInt(valor);
+    const display = document.getElementById('display-tiempo-manual-global');
+    if(display) display.innerText = valor + "m";
     local_guardarEstadoGlobal();
 }
 
@@ -139,6 +184,7 @@ function renderizarMonitorPrincipal() {
 
     const esBloqueadoPorTanque = sistemaEstado.startsWith('pausa_tanque') || sistemaEstado === 'llenado_puro';
 
+    // BOTONERA FLUIDA ORIGINAL
     const filaUnicaComandos = document.createElement('div');
     filaUnicaComandos.style.display = "flex";
     filaUnicaComandos.style.gap = "5px";
@@ -155,6 +201,7 @@ function renderizarMonitorPrincipal() {
     `;
     container.appendChild(filaUnicaComandos);
 
+    // Grilla Manual Directa
     const titleManual = document.createElement('div');
     titleManual.className = "manual-section-title";
     titleManual.innerText = "Zonas Físicas del Colector (Prueba Manual Directa)";
@@ -175,6 +222,73 @@ function renderizarMonitorPrincipal() {
         gridZonas.appendChild(btn);
     });
     container.appendChild(gridZonas);
+
+    // Programas Automáticos TLC
+    const titleProgs = document.createElement('div');
+    titleProgs.className = "manual-section-title";
+    titleProgs.style.marginTop = "15px";
+    titleProgs.innerText = `Programas Automáticos (Ajuste Estacional TLC: ${ajusteEstacionalTLC}%)`;
+    container.appendChild(titleProgs);
+
+    programas.forEach(prog => {
+        const card = document.createElement('div');
+        card.className = "zone-card";
+        card.style.marginBottom = "10px";
+        
+        let stringDias = prog.dias.map(d => diasSemana[d]).join(' - ');
+        let listadoZonas = prog.zonas.map(z => {
+            let minsCalculados = Math.max(1, Math.round(z.min * (ajusteEstacionalTLC / 100)));
+            return `Z${z.id} (${minsCalculados}m)`;
+        }).join(', ');
+
+        card.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <strong>⚙️ ${prog.nombre}</strong> — <span style="color:var(--primary); font-weight:bold;">${prog.start_time} hs</span>
+                    <div style="font-size:11px; color:#666; margin-top:4px;">Calendario: [${stringDias}]</div>
+                    <div style="font-size:12px; color:var(--dark); font-weight:bold; margin-top:2px;">Tiempos Escalados: ${listadoZonas || 'Ninguna'}</div>
+                </div>
+                <button class="btn" style="width:auto; padding:8px 12px; font-size:12px; background:var(--success);" onclick="lanzarProgramaDesdeMonitor(${prog.id})">▶️ Ejecutar</button>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+    
+    // Inyectar el badge justo al final del render dinámico del contenedor
+    inyectarBadgeVersionEnPantalla();
+}
+
+function renderizarPantallaConfiguracion() {
+    const container = document.getElementById('programas-master-container');
+    if(!container) return;
+    container.innerHTML = '';
+
+    programas.forEach(prog => {
+        const card = document.createElement('div');
+        card.className = "zone-card";
+        card.style.marginBottom = "15px";
+
+        let stringDias = prog.dias.map(d => diasSemana[d]).join(' - ');
+        let totalNominal = prog.zonas.reduce((acc, z) => acc + z.min, 0);
+        let totalEscalado = prog.zonas.reduce((acc, z) => acc + Math.max(1, Math.round(z.min * (ajusteEstacionalTLC / 100))), 0);
+
+        card.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:8px;">
+                <span style="font-size:16px; font-weight:bold; color:var(--dark);">📋 ${prog.nombre}</span>
+                <div style="display:flex; gap:5px;">
+                    <button class="btn" style="padding:6px 12px; font-size:12px; background:var(--primary);" onclick="abrirEditorPrograma(${prog.id})">📝 Modificar</button>
+                    <button class="btn" style="padding:6px 12px; font-size:12px; background:var(--danger);" onclick="eliminarPrograma(${prog.id})">🗑️ Borrar</button>
+                </div>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; font-size:13px; color:#555;">
+                <div>⏰ Hora Arranque: <strong>${prog.start_time} hs</strong></div>
+                <div>⏱️ Duración Base: <strong>${totalNominal} min</strong></div>
+                <div style="grid-column: span 2; margin-top:5px;">📅 Días de Riego: <span style="color:var(--primary); font-weight:bold;">${stringDias || 'Ninguno seleccionado'}</span></div>
+                <div style="grid-column: span 2; margin-top:5px; color:var(--success); font-weight:bold;">⏱️ Tiempo con Ajuste TLC (${ajusteEstacionalTLC}%): ${totalEscalado} min</div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
 }
 
 function toggleZonaManualDirecta(zonaId) {
@@ -185,73 +299,10 @@ function toggleZonaManualDirecta(zonaId) {
     sistemaEstado = 'riego_manual';
     zonaActivaId = zonaId;
     tiempoRestanteActual = tiempoManualGlobalConfigurado; 
-    tiempoInicialAsignado = tiempoManualGlobalConfigurado; 
 
     arrancarBucleTiempoGenerico(false);
     renderizarMonitorPrincipal();
 }
 
-function arrancarBucleTiempoGenerico(esAutomatico) {
-    const wrapper = document.getElementById('progress-wrapper');
-    const bar = document.getElementById('cycle-progress');
-    const lblText = document.getElementById('status-text');
-    
-    if(wrapper) wrapper.style.display = 'block';
-    if(lblText) {
-        lblText.className = 'status-current running';
-        lblText.innerText = `${esAutomatico ? 'AUTO' : 'MANUAL'}: ZONA ${zonaActivaId} 💧`;
-    }
-
-    if(window.cicloInterval) clearInterval(window.cicloInterval);
-    window.cicloInterval = setInterval(() => {
-        const tr = document.getElementById('timer-remaining');
-        if (tiempoRestanteActual > 0) {
-            if(tr) tr.innerText = `Tiempo restante: ${tiempoRestanteActual} min`;
-            tiempoRestanteActual--;
-        } else {
-            clearInterval(window.cicloInterval);
-            forzarParadaTotal();
-        }
-    }, 1000);
-}
-
-function gestionarFlotanteSimulado() {
-    if (tanqueLlamando) detenerLlenadoSecuencial(false);
-    else ejecutarLlenadoSecuencial();
-}
-
-function ejecutarLlenadoSecuencial() {
-    tanqueLlamando = true;
-    const hwFlotante = document.getElementById('hw-flotante');
-    if(hwFlotante) {
-        hwFlotante.className = 'hw-badge alert';
-        hwFlotante.innerHTML = `${ICONO_FLOTANTE_BOYA} <span>FLOTANTE: ¡DEMANDA AGUA! ⚠️</span>`;
-    }
-    sistemaEstado = 'llenado_puro';
-    renderizarMonitorPrincipal();
-}
-
-function detenerLlenadoSecuencial(porTimeout) {
-    if(window.tanqueInterval) clearInterval(window.tanqueInterval);
-    tanqueLlamando = false;
+function lanzarProgramaDesdeMonitor(idProg) {
     forzarParadaTotal();
-}
-
-function forzarParadaTotal() {
-    if(window.cicloInterval) clearInterval(window.cicloInterval);
-    if(window.tanqueInterval) clearInterval(window.tanqueInterval);
-    
-    sistemaEstado = 'idle';
-    zonaActivaId = null;
-    tiempoRestanteActual = 0;
-
-    const lblText = document.getElementById('status-text');
-    if(lblText) { lblText.className = 'status-current'; lblText.innerText = '🏠 EN ESPERA (STANDBY)'; }
-
-    actualizarFechaHoy();
-    renderizarMonitorPrincipal();
-}
-
-function enviarConfiguracionFlashESP32() {
-    alert("🚀 ¡Sincronizado con el ESP32!");
-}
