@@ -1,18 +1,29 @@
 // ============================================================================
 // FIRMWARE FRONTEND: Riego Hidráulico TLC
-// VERSION: v1.2.1 (Build: 20260613-1745)
-// DESCRIPCIÓN: Corrección estricta de sintaxis JS (Remoción de Void heredado)
+// VERSION: v2.0.0 (Build: 20260613-1800)
+// DESCRIPCIÓN: Motor Multiprograma con selectores de calendario y asignación de zonas
 // ============================================================================
 
-const CONFIG_VERSION = "v1.2.1 (Build: 20260613-1745)";
+const CONFIG_VERSION = "v2.0.0 (Build: 20260613-1800)";
 
 const diasSemana = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 const nombresDiasLargos = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-let zonas = [];
-let cicloInterval = null;
-let tanqueInterval = null;
+// Catálogo maestro de hardware (8 zonas físicas estables)
+let zonasMaestras = [];
+for (let i = 1; i <= 8; i++) {
+    zonasMaestras.push({ id: i, nombre: `Zona Riego ${i}` });
+}
 
+// Estructura de programas cargados
+let programas = [
+    { id: 1, nombre: "Programa Mañana (A)", start_time: "06:00", dias: [1, 3, 5], zonas: [{id: 1, min: 10}, {id: 2, min: 15}] },
+    { id: 2, nombre: "Programa Tarde (B)", start_time: "19:30", dias: [2, 4], zonas: [{id: 4, min: 12}] }
+];
+
+let programaEditandoId = null;
+
+// Variables de ejecución en tiempo real
 let sistemaEstado = 'idle'; 
 let zonaActivaId = null;
 let tiempoRestanteActual = 0;
@@ -20,93 +31,341 @@ let tiempoLlenadoTanqueRestante = 0;
 let timeoutTanqueConfigurado = 1; 
 let listaZonasPrioridad = [];
 let tanqueLlamando = false;
-let startTimeConfigurado = "07:00"; 
-let diaHoyIndex = 0;
-
-for (let i = 1; i <= 8; i++) {
-    zonas.push({ id: i, nombre: `Zona Riego ${i}`, minutos: 5, dias: [1, 3, 5] });
-}
 
 function trazarVersionCompilacion() {
     console.log(
-        `%c 💧 TLC RIEGO HIDRÁULICO — Running Version: ${CONFIG_VERSION} `,
-        "background: #4CAF50; color: #ffffff; font-weight: bold; padding: 4px; border-radius: 4px;"
+        `%c 💧 TLC MULTIPROGRAMA ACTIVE — Version: ${CONFIG_VERSION} `,
+        "background: #2196F3; color: #ffffff; font-weight: bold; padding: 4px; border-radius: 4px;"
     );
 }
 
 function local_guardarEstadoGlobal() {
     const backup = {
-        zonas: zonas,
-        timeoutTanqueConfigurado: timeoutTanqueConfigurado,
-        startTimeConfigurado: startTimeConfigurado
+        programas: programas,
+        timeoutTanqueConfigurado: timeoutTanqueConfigurado
     };
-    localStorage.setItem('TLC_RIEGO_DATA', JSON.stringify(backup));
+    localStorage.setItem('TLC_RIEGO_MULTI_DATA', JSON.stringify(backup));
 }
 
 function local_recuperarEstadoGoblal() {
     trazarVersionCompilacion();
-    const datosGuardados = localStorage.getItem('TLC_RIEGO_DATA');
+    const datosGuardados = localStorage.getItem('TLC_RIEGO_MULTI_DATA');
     if (datosGuardados) {
         const cache = JSON.parse(datosGuardados);
-        zonas = cache.zonas;
+        programas = cache.programas;
         timeoutTanqueConfigurado = cache.timeoutTanqueConfigurado;
-        startTimeConfigurado = cache.startTimeConfigurado;
     }
 }
 
 function actualizarFechaHoy() {
     const ahora = new Date();
-    diaHoyIndex = ahora.getDay();
+    const hoyIdx = ahora.getDay();
     const fechaString = ahora.toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
     
     const labelFecha = document.getElementById('display-fecha-hoy');
-    const labelProximo = document.getElementById('display-proximo-riego');
-    
-    if(labelFecha) labelFecha.innerText = `Hoy: ${nombresDiasLargos[diaHoyIndex]} ${fechaString}`;
-    if(labelProximo) labelProximo.innerText = `Programa automático fijado a las: ${startTimeConfigurado} hs`;
+    if(labelFecha) labelFecha.innerText = `Hoy: ${nombresDiasLargos[hoyIdx]} ${fechaString}`;
 }
 
-function renderizarBotonesManuales() {
+// --- RENDERIZADO DE LA PANTALLA MONITOR (DASHBOARD) ---
+function renderizarMonitorPrincipal() {
     const container = document.getElementById('manual-buttons-container');
-    if(!container) return; 
+    if(!container) return;
     container.innerHTML = '';
 
     const esBloqueadoPorTanque = sistemaEstado.startsWith('pausa_tanque') || sistemaEstado === 'llenado_puro';
 
-    zonas.forEach(zona => {
-        const isActive = (zonaActivaId === zona.id && (sistemaEstado === 'riego_manual' || sistemaEstado === 'riego_auto'));
-        const isPaused = (zonaActivaId === zona.id && sistemaEstado.startsWith('pausa_tanque'));
-        
-        let extraClass = '';
-        let label = 'APAGADO';
-        
-        if(isActive) { extraClass = 'active'; label = 'REGANDO'; }
-        else if(isPaused) { extraClass = 'paused'; label = 'PAUSADO'; }
-        else if(esBloqueadoPorTanque) { extraClass = 'disabled'; label = 'BLOQUEADO'; }
+    // Seccion A: Botonera rápida de Zonas Físicas
+    const titleManual = document.createElement('div');
+    titleManual.className = "manual-section-title";
+    titleManual.innerText = "Zonas Físicas del Colector (Prueba Manual Directa)";
+    container.appendChild(titleManual);
 
+    const gridZonas = document.createElement('div');
+    gridZonas.className = "manual-grid";
+
+    zonasMaestras.forEach(zona => {
+        const isActive = (zonaActivaId === zona.id && sistemaEstado === 'riego_manual');
+        const isPaused = (zonaActivaId === zona.id && sistemaEstado.startsWith('pausa_tanque'));
+        let extraClass = isActive ? 'active' : (isPaused ? 'paused' : (esBloqueadoPorTanque ? 'disabled' : ''));
+        
         const btn = document.createElement('div');
         btn.className = `btn-manual ${extraClass}`;
-        btn.onclick = () => { if(!esBloqueadoPorTanque) toggleZonaManual(zona.id); };
+        btn.onclick = () => { if(!esBloqueadoPorTanque) toggleZonaManualDirecta(zona.id); };
         btn.innerHTML = `
             <svg viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4Z"/></svg>
             <span>${zona.nombre}</span>
-            <small style="font-size:10px; font-weight:bold;">${label}</small>
         `;
-        container.appendChild(btn);
+        gridZonas.appendChild(btn);
+    });
+    container.appendChild(gridZonas);
+
+    // Seccion B: Programas Automáticos Activos en el Sistema
+    const titleProgs = document.createElement('div');
+    titleProgs.className = "manual-section-title";
+    titleProgs.innerText = "Programas Automáticos Almacenados";
+    container.appendChild(titleProgs);
+
+    programas.forEach(prog => {
+        const card = document.createElement('div');
+        card.className = "zone-card";
+        card.style.marginBottom = "10px";
+        
+        let stringDias = prog.dias.map(d => diasSemana[d]).join(' - ');
+        let listadoZonas = prog.zonas.map(z => `Z${z.id} (${z.min}m)`).join(', ');
+
+        card.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <strong>⚙️ ${prog.nombre}</strong> — <span style="color:var(--primary); font-weight:bold;">${prog.start_time} hs</span>
+                    <div style="font-size:11px; color:#666; margin-top:4px;">Calendario: [${stringDias}]</div>
+                    <div style="font-size:12px; color:var(--dark); font-weight:bold; margin-top:2px;">Zonas: ${listadoZonas || 'Ninguna'}</div>
+                </div>
+                <button class="btn" style="width:auto; padding:8px 12px; font-size:12px; background:var(--success);" onclick="lanzarProgramaDesdeMonitor(${prog.id})">▶️ Ejecutar</button>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+// --- RENDERIZADO DE LA PANTALLA CONFIGURACIÓN (PROGRAMADOR) ---
+function renderizarPantallaConfiguracion() {
+    const container = document.getElementById('programas-master-container');
+    if(!container) return;
+    container.innerHTML = '';
+
+    programas.forEach(prog => {
+        const card = document.createElement('div');
+        card.className = "zone-card";
+        card.style.marginBottom = "15px";
+
+        let stringDias = prog.dias.map(d => diasSemana[d]).join(' - ');
+        let totalMinutos = prog.zonas.reduce((acc, current) => acc + current.min, 0);
+
+        card.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:8px;">
+                <span style="font-size:16px; font-weight:bold; color:var(--dark);">📋 ${prog.nombre}</span>
+                <div style="display:flex; gap:5px;">
+                    <button class="btn" style="padding:6px 12px; font-size:12px; background:var(--primary);" onclick="abrirEditorPrograma(${prog.id})">📝 Modificar</button>
+                    <button class="btn" style="padding:6px 12px; font-size:12px; background:var(--danger);" onclick="eliminarPrograma(${prog.id})">🗑️ Borrar</button>
+                </div>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; font-size:13px; color:#555;">
+                <div>⏰ Hora Arranque: <strong>${prog.start_time} hs</strong></div>
+                <div>⏱️ Duración Total: <strong>${totalMinutos} min</strong></div>
+                <div style="grid-column: span 2; margin-top:5px;">📅 Días de Riego: <span style="color:var(--primary); font-weight:bold;">${stringDias || 'Ninguno seleccionado'}</span></div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+function abrirEditorPrograma(id) {
+    programaEditandoId = id;
+    const prog = id ? programas.find(p => p.id === id) : { id: Date.now(), nombre: "Nuevo Programa", start_time: "07:00", dias: [], zonas: [] };
+    
+    if(!programas.find(p => p.id === id) && id !== null) return; 
+
+    document.getElementById('modal-titulo').innerText = id ? "Modificar Programa" : "Crear Nuevo Programa";
+    document.getElementById('modal-nombre-prog').value = prog.nombre;
+    document.getElementById('modal-start-time').value = prog.start_time;
+
+    // Pintar selector de días de calendario
+    const selectorDias = document.getElementById('modal-days-selector');
+    selectorDias.innerHTML = '';
+    diasSemana.forEach((dia, idx) => {
+        const esSeleccionado = prog.dias.includes(idx);
+        const btn = document.createElement('div');
+        btn.className = `day-btn ${esSeleccionado ? 'selected' : ''}`;
+        btn.innerText = dia;
+        btn.onclick = () => {
+            if(prog.dias.includes(idx)) prog.dias = prog.dias.filter(d => d !== idx);
+            else prog.dias.push(idx);
+            btn.classList.toggle('selected');
+        };
+        selectorDias.appendChild(btn);
     });
 
-    const btnAuto = document.getElementById('btn-auto-master');
-    if(btnAuto) {
-        if(esBloqueadoPorTanque) {
-            btnAuto.classList.add('disabled');
-            btnAuto.style.pointerEvents = 'none';
-        } else {
-            btnAuto.classList.remove('disabled');
-            btnAuto.style.pointerEvents = 'auto';
-        }
+    // Pintar asignador de zonas con sliders de tiempo individuales
+    const contenedorZonas = document.getElementById('modal-zones-assignment');
+    contenedorZonas.innerHTML = '';
+
+    zonasMaestras.forEach(zMaestra => {
+        const zonaEnProg = prog.zonas.find(z => z.id === zMaestra.id);
+        const asignada = !!zonaEnProg;
+        const minutosRiego = asignada ? zonaEnProg.min : 0;
+
+        const row = document.createElement('div');
+        row.className = "zone-card";
+        row.style.background = asignada ? "#e8f5e9" : "#f9f9f9";
+        row.style.border = asignada ? "1px solid var(--success)" : "1px solid #ddd";
+        row.style.marginBottom = "8px";
+
+        row.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <label style="font-weight:bold; color:var(--dark);">
+                    <input type="checkbox" id="chk-zona-${zMaestra.id}" ${asignada ? 'checked' : ''} onchange="toggleInclusionZonaFisica(${zMaestra.id})"> 
+                    ${zMaestra.nombre}
+                </label>
+                <span class="time-display" id="lbl-min-prog-${zMaestra.id}" style="color:${asignada ? 'var(--success)':'#aaa'}">${minutosRiego}m</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span style="font-size:11px; color:#777;">Tiempo:</span>
+                <input type="range" min="1" max="60" value="${minutosRiego || 5}" id="slide-zona-${zMaestra.id}" ${!asignada ? 'disabled':''} style="flex-grow:1;" oninput="cambiarMinutosZonaPrograma(${zMaestra.id}, this.value)">
+            </div>
+        `;
+        contenedorZonas.appendChild(row);
+    });
+
+    if(!programas.find(p => p.id === id)) {
+        programaEditandoId = "NUEVO";
+        window.tempNuevoProg = prog;
+    }
+
+    document.getElementById('editor-modal-screen').style.display = 'block';
+}
+
+function toggleInclusionZonaFisica(idZona) {
+    const chk = document.getElementById(`chk-zona-${idZona}`);
+    const slide = document.getElementById(`slide-zona-${idZona}`);
+    const lbl = document.getElementById(`lbl-min-prog-${idZona}`);
+    const prog = programaEditandoId === "NUEVO" ? window.tempNuevoProg : programas.find(p => p.id === programaEditandoId);
+
+    if(chk.checked) {
+        slide.disabled = false;
+        prog.zonas.push({id: idZona, min: parseInt(slide.value)});
+        lbl.style.color = "var(--success)";
+        lbl.innerText = slide.value + "m";
+        chk.closest('.zone-card').style.background = "#e8f5e9";
+        chk.closest('.zone-card').style.border = "1px solid var(--success)";
+    } else {
+        slide.disabled = true;
+        prog.zonas = prog.zonas.filter(z => z.id !== idZona);
+        lbl.style.color = "#aaa";
+        lbl.innerText = "0m";
+        chk.closest('.zone-card').style.background = "#f9f9f9";
+        chk.closest('.zone-card').style.border = "1px solid #ddd";
     }
 }
 
+function cambiarMinutosZonaPrograma(idZona, valor) {
+    const prog = programaEditandoId === "NUEVO" ? window.tempNuevoProg : programas.find(p => p.id === programaEditandoId);
+    document.getElementById(`lbl-min-prog-${idZona}`).innerText = valor + "m";
+    let zona = prog.zonas.find(z => z.id === idZona);
+    if(zona) zona.min = parseInt(valor);
+}
+
+function cerrarEditorModal() {
+    document.getElementById('editor-modal-screen').style.display = 'none';
+    window.tempNuevoProg = null;
+}
+
+function guardarCambiosPrograma() {
+    const name = document.getElementById('modal-nombre-prog').value;
+    const time = document.getElementById('modal-start-time').value;
+
+    if(programaEditandoId === "NUEVO") {
+        window.tempNuevoProg.nombre = name;
+        window.tempNuevoProg.start_time = time;
+        programas.push(window.tempNuevoProg);
+    } else {
+        let prog = programas.find(p => p.id === programaEditandoId);
+        prog.nombre = name;
+        prog.start_time = time;
+    }
+
+    local_guardarEstadoGlobal();
+    cerrarEditorModal();
+    renderTransitionDestino();
+}
+
+function eliminarPrograma(id) {
+    if(confirm("¿Seguro que querés borrar este programa de riego?")) {
+        programas = programas.filter(p => p.id !== id);
+        local_guardarEstadoGlobal();
+        renderTransitionDestino();
+    }
+}
+
+function renderTransitionDestino() {
+    let path = window.location.pathname;
+    if(path.includes("config.html")) renderIndexConfiguracionBase();
+    else renderizarMonitorPrincipal();
+}
+
+// --- LOGICA DE RIEGO INTERACTIVO ---
+function toggleZonaManualDirecta(zonaId) {
+    if (sistemaEstado.startsWith('pausa_tanque') || sistemaEstado === 'llenado_puro') return;
+
+    if (zonaActivaId === zonaId && sistemaEstado === 'riego_manual') {
+        forzarParadaTotal();
+        return;
+    }
+
+    forzarParadaTotal();
+    sistemaEstado = 'riego_manual';
+    zonaActivaId = zonaId;
+    tiempoRestanteActual = 5; // 5 minutos por defecto para pruebas manuales rápidas
+
+    document.getElementById('hw-tanque').className = 'hw-badge closed';
+    document.getElementById('hw-tanque').innerText = 'VALV. TANQUE: CERRADA (NC) 🔴';
+    document.getElementById('hw-bomba').className = 'hw-badge on';
+    document.getElementById('hw-bomba').innerText = 'BOMBA: RUNNING ⚡';
+
+    arrancarBucleTiempoGenerico(false);
+    renderizarMonitorPrincipal();
+}
+
+function lanzarProgramaDesdeMonitor(idProg) {
+    forzarParadaTotal();
+    const prog = programas.find(p => p.id === idProg);
+    if(prog.zonas.length === 0) { alert("Este programa no tiene zonas asignadas."); return; }
+
+    sistemaEstado = 'riego_auto';
+    listaZonasPrioridad = [...prog.zonas]; // Copia de la cola de zonas configuradas
+    avanzarCicloAutomaticoMulti();
+}
+
+function avanzarCicloAutomaticoMulti() {
+    if (listaZonasPrioridad.length > 0) {
+        let proximaZona = listaZonasPrioridad.shift();
+        zonaActivaId = proximaZona.id;
+        tiempoRestanteActual = proximaZona.min;
+
+        document.getElementById('hw-tanque').className = 'hw-badge closed';
+        document.getElementById('hw-tanque').innerText = 'VALV. TANQUE: CERRADA (NC) 🔴';
+        document.getElementById('hw-bomba').className = 'hw-badge on';
+        document.getElementById('hw-bomba').innerText = 'BOMBA: RUNNING ⚡';
+
+        arrancarBucleTiempoGenerico(true);
+        renderizarMonitorPrincipal();
+    } else {
+        forzarParadaTotal();
+        setTimeout(() => { alert("✅ Ciclo de programa automático completado."); }, 200);
+    }
+}
+
+function arrancarBucleTiempoGenerico(esAutomatico) {
+    document.getElementById('progress-wrapper').style.display = 'block';
+    document.getElementById('status-text').className = 'status-current running';
+    document.getElementById('status-text').innerText = `${esAutomatico ? 'AUTO' : 'MANUAL'}: ZONA ${zonaActivaId} 💧`;
+
+    if(cicloInterval) clearInterval(cicloInterval);
+    cicloInterval = setInterval(() => {
+        if (tiempoRestanteActual > 0) {
+            document.getElementById('timer-remaining').innerText = `Tiempo restante: ${tiempoRestanteActual} min`;
+            tiempoRestanteActual--;
+        } else {
+            clearInterval(cicloInterval);
+            document.getElementById('hw-bomba').className = 'hw-badge';
+            document.getElementById('hw-bomba').innerText = 'BOMBA: OFF';
+            
+            if (esAutomatico) avanzarCicloAutomaticoMulti();
+            else forzarParadaTotal();
+        }
+    }, 1000);
+}
+
+// --- ALGORITMO CRÍTICO DEL TANQUE ---
 function gestionarFlotanteSimulado() {
     if (tanqueLlamando) detenerLlenadoSecuencial(false);
     else ejecutarLlenadoSecuencial();
@@ -139,26 +398,21 @@ function ejecutarLlenadoSecuencial() {
                 if (tanqueLlamando) {
                     document.getElementById('hw-bomba').className = 'hw-badge on';
                     document.getElementById('hw-bomba').innerText = 'BOMBA: RUNNING (LLENANDO TANQUE) ⚡';
-                    if(timeoutTanqueConfigurado > 0) arrancarBucleTanque(timeoutTanqueConfigurado * 60);
-                    else arrancarBucleTanqueInconmensurable();
+                    arrancarBucleTanque(timeoutTanqueConfigurado * 60);
                 }
             }, 500);
             renderizarBotonesManuales();
         }, 500);
     } else {
         sistemaEstado = 'llenado_puro';
-        renderizarBotonesManuales(); 
+        renderizarBotonesManuales();
         document.getElementById('hw-tanque').className = 'hw-badge';
         document.getElementById('hw-tanque').innerText = 'VALV. TANQUE: ABIERTA';
-        document.getElementById('status-text').className = 'status-current paused';
-        document.getElementById('status-text').innerText = `⏳ ESPERANDO BOMBA (500ms)`;
-
         setTimeout(() => {
             if (tanqueLlamando) {
                 document.getElementById('hw-bomba').className = 'hw-badge on';
                 document.getElementById('hw-bomba').innerText = 'BOMBA: RUNNING (LLENANDO TANQUE) ⚡';
-                if(timeoutTanqueConfigurado > 0) arrancarBucleTanque(timeoutTanqueConfigurado * 60);
-                else arrancarBucleTanqueInconmensurable();
+                arrancarBucleTanque(timeoutTanqueConfigurado * 60);
             }
         }, 500);
     }
@@ -167,30 +421,20 @@ function ejecutarLlenadoSecuencial() {
 function arrancarBucleTanque(segundosTotales) {
     tiempoLlenadoTanqueRestante = segundosTotales;
     document.getElementById('progress-wrapper').style.display = 'block';
-    document.getElementById('cycle-progress').className = 'progress-bar paused'; 
+    document.getElementById('cycle-progress').className = 'progress-bar paused';
+    document.getElementById('cycle-progress').style.width = '100%';
     document.getElementById('status-text').className = 'status-current paused';
     document.getElementById('status-text').innerText = `⚠️ LLENANDO TANQUE`;
 
     if(tanqueInterval) clearInterval(tanqueInterval);
     tanqueInterval = setInterval(() => {
         if (tiempoLlenadoTanqueRestante > 0) {
-            document.getElementById('timer-remaining').innerText = `Time-out activo. Restan: ${tiempoLlenadoTanqueRestante} seg`;
-            let pct = ((segundosTotales - tiempoLlenadoTanqueRestante) / segundosTotales) * 100;
-            document.getElementById('cycle-progress').style.width = `${pct}%`;
+            document.getElementById('timer-remaining').innerText = `Protección de bomba activa. Tiempo límite: ${tiempoLlenadoTanqueRestante} seg`;
             tiempoLlenadoTanqueRestante--;
         } else {
-            detenerLlenadoSecuencial(true); 
+            detenerLlenadoSecuencial(true);
         }
-    }, 1000); 
-}
-
-function arrancarBucleTanqueInconmensurable() {
-    document.getElementById('progress-wrapper').style.display = 'block';
-    document.getElementById('cycle-progress').className = 'progress-bar paused';
-    document.getElementById('cycle-progress').style.width = `100%`;
-    document.getElementById('status-text').className = 'status-current paused';
-    document.getElementById('status-text').innerText = `⚠️ LLENANDO TANQUE (SIN TIMEOUT)`;
-    document.getElementById('timer-remaining').innerText = `Requiere corte manual del flotante.`;
+    }, 1000);
 }
 
 function detenerLlenadoSecuencial(porTimeout) {
@@ -204,125 +448,21 @@ function detenerLlenadoSecuencial(porTimeout) {
 
         tanqueLlamando = false;
         const btnSim = document.getElementById('btn-sim-flotante');
-        if(btnSim) {
-            btnSim.innerText = 'Simular Falta de Agua (Llamar)';
-            btnSim.style.background = 'var(--warning)';
-        }
-
-        document.getElementById('hw-flotante').className = 'hw-badge';
-        document.getElementById('hw-flotante').innerText = 'FLOTANTE: TANQUE OK';
+        if(btnSim) { btnSim.innerText = 'Simular Falta de Agua (Llamar)'; btnSim.style.background = 'var(--warning)'; }
 
         if (porTimeout && sistemaEstado.startsWith('pausa_tanque')) {
-            alert("🚨 Alerta: Llenado excedió límite. Riego cancelado.");
+            alert("🚨 Abortado: Llenado de tanque excedió límite de seguridad.");
             forzarParadaTotal();
             return;
         }
 
-        if (sistemaEstado.startsWith('pausa_tanque')) restaurarRiegoPausado();
-        else forzarParadaTotal();
-    }, 500);
-}
-
-function restaurarRiegoPausado() {
-    const origen = sistemaEstado;
-    document.getElementById('cycle-progress').className = 'progress-bar'; 
-    document.getElementById('status-text').className = 'status-current running';
-    document.getElementById('status-text').innerText = `⏳ PREPARANDO RIEGO (500ms)`;
-
-    setTimeout(() => {
-        document.getElementById('hw-bomba').className = 'hw-badge on';
-        document.getElementById('hw-bomba').innerText = 'BOMBA: RUNNING ⚡';
-
-        if (origen === 'pausa_tanque_riego_manual') {
-            sistemaEstado = 'riego_manual';
-            arrancarBucleTiempo(false);
-        } else if (origen === 'pausa_tanque_riego_auto') {
-            sistemaEstado = 'riego_auto';
-            arrancarBucleTiempo(true);
-        }
-        renderizarBotonesManuales();
-    }, 500);
-}
-
-function toggleZonaManual(zonaId) {
-    if (sistemaEstado.startsWith('pausa_tanque') || sistemaEstado === 'llenado_puro') return;
-    if (zonaActivaId === zonaId && sistemaEstado === 'riego_manual') { forzarParadaTotal(); return; }
-
-    forzarParadaTotal();
-    const zonaConfig = zonas.find(z => z.id === zonaId);
-    if(zonaConfig.minutos === 0) return;
-
-    sistemaEstado = 'riego_manual';
-    zonaActivaId = zonaId;
-    tiempoRestanteActual = zonaConfig.minutos;
-
-    document.getElementById('hw-tanque').className = 'hw-badge closed';
-    document.getElementById('hw-tanque').innerText = 'VALV. TANQUE: CERRADA (NC) 🔴';
-    document.getElementById('hw-bomba').className = 'hw-badge on';
-    document.getElementById('hw-bomba').innerText = 'BOMBA: RUNNING ⚡';
-
-    arrancarBucleTiempo(false);
-    renderizarBotonesManuales();
-}
-
-function arrancarBucleTiempo(esAutomatico) {
-    document.getElementById('progress-wrapper').style.display = 'block';
-    const zonaConfig = zonas.find(z => z.id === zonaActivaId);
-
-    if(cicloInterval) clearInterval(cicloInterval);
-    document.getElementById('status-text').className = 'status-current running';
-    document.getElementById('status-text').innerText = `${esAutomatico ? 'AUTO' : 'MANUAL'}: RIEGO ZONA ${zonaActivaId} 💧`;
-
-    cicloInterval = setInterval(() => {
-        if (tiempoRestanteActual > 0) {
-            document.getElementById('timer-remaining').innerText = `Tiempo restante: ${tiempoRestanteActual} min`;
-            let pct = ((zonaConfig.minutos - tiempoRestanteActual) / zonaConfig.minutos) * 100;
-            document.getElementById('cycle-progress').style.width = `${pct}%`;
-            tiempoRestanteActual--;
+        if (sistemaEstado.startsWith('pausa_tanque')) {
+            document.getElementById('cycle-progress').className = 'progress-bar';
+            arrancarBucleTiempoGenerico(sistemaEstado.includes('riego_auto'));
         } else {
-            clearInterval(cicloInterval);
-            document.getElementById('hw-bomba').className = 'hw-badge';
-            document.getElementById('hw-bomba').innerText = 'BOMBA: OFF';
-            if (esAutomatico) avanzarCicloAutomatico();
-            else forzarParadaTotal();
+            forzarParadaTotal();
         }
-    }, 1000); 
-}
-
-function navegarA(destino) {
-    let rutaActual = window.location.pathname;
-    if (rutaActual.includes("config.html") && destino === "monitor.html") {
-        window.location.href = rutaActual.replace("config.html", "monitor.html");
-    } else if (rutaActual.includes("monitor.html") && destino === "config.html") {
-        window.location.href = rutaActual.replace("monitor.html", "config.html");
-    } else {
-        window.location.href = destino;
-    }
-}
-
-function ejecutarCicloAutomatico() {
-    if (sistemaEstado.startsWith('pausa_tanque') || sistemaEstado === 'llenado_puro') return;
-    forzarParadaTotal();
-    sistemaEstado = 'riego_auto';
-    listaZonasPrioridad = zonas.filter(z => z.minutos > 0).map(z => z.id);
-    if(listaZonasPrioridad.length === 0) { sistemaEstado = 'idle'; return; }
-    avanzarCicloAutomatico();
-}
-
-function avanzarCicloAutomatico() {
-    if (listaZonasPrioridad.length > 0) {
-        zonaActivaId = listaZonasPrioridad.shift();
-        tiempoRestanteActual = zonas.find(z => z.id === zonaActivaId).minutos;
-        document.getElementById('hw-tanque').className = 'hw-badge closed';
-        document.getElementById('hw-tanque').innerText = 'VALV. TANQUE: CERRADA (NC) 🔴';
-        document.getElementById('hw-bomba').className = 'hw-badge on';
-        document.getElementById('hw-bomba').innerText = 'BOMBA: RUNNING ⚡';
-        arrancarBucleTiempo(true);
-        renderizarBotonesManuales();
-    } else {
-        forzarParadaTotal();
-        setTimeout(() => { alert("✅ Ciclo de riego completo finalizado."); }, 200);
-    }
+    }, 500);
 }
 
 function forzarParadaTotal() {
@@ -336,20 +476,10 @@ function forzarParadaTotal() {
     tanqueLlamando = false;
 
     const lblText = document.getElementById('status-text');
-    const lblTime = document.getElementById('timer-remaining');
-    const wrapper = document.getElementById('progress-wrapper');
-    const progress = document.getElementById('cycle-progress');
-
     if(lblText) {
-        lblText.className = 'status-current';
-        lblText.innerText = '🏠 EN ESPERA (STANDBY)';
-        if(lblTime) lblTime.innerText = '';
-        if(wrapper) wrapper.style.display = 'none';
-        if(progress) {
-            progress.style.width = '0%';
-            progress.className = 'progress-bar';
-        }
-        
+        lblText.className = 'status-current'; lblText.innerText = '🏠 EN ESPERA (STANDBY)';
+        document.getElementById('timer-remaining').innerText = '';
+        document.getElementById('progress-wrapper').style.display = 'none';
         document.getElementById('hw-bomba').className = 'hw-badge';
         document.getElementById('hw-bomba').innerText = 'BOMBA: OFF';
         document.getElementById('hw-tanque').className = 'hw-badge closed';
@@ -357,78 +487,18 @@ function forzarParadaTotal() {
         document.getElementById('hw-flotante').className = 'hw-badge';
         document.getElementById('hw-flotante').innerText = 'FLOTANTE: TANQUE OK';
     }
-
     actualizarFechaHoy();
-    renderizarBotonesManuales();
+    renderTransitionDestino();
 }
 
-function actualizarDisplayTimeout(valor) {
-    timeoutTanqueConfigurado = parseInt(valor);
-    document.getElementById('display-timeout-tanque').innerText = valor === '0' ? 'Manual' : valor + 'm';
-}
-
-function actualizarStartTime(valor) {
-    startTimeConfigurado = valor;
-}
-
-function renderizarConfiguracion() {
-    document.getElementById('input-timeout-tanque').value = timeoutTanqueConfigurado;
-    document.getElementById('display-timeout-tanque').innerText = timeoutTanqueConfigurado === 0 ? 'Manual' : timeoutTanqueConfigurado + 'm';
-    document.getElementById('input-start-time').value = startTimeConfigurado;
-
-    const container = document.getElementById('zones-master');
-    if(!container) return;
-    container.innerHTML = '';
-    
-    const hoyIdx = new Date().getDay();
-
-    zonas.forEach((zona, index) => {
-        const card = document.createElement('div');
-        card.className = 'zone-card';
-        card.innerHTML = `
-            <div class="zone-title-card">
-                <svg viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4Z"/></svg>
-                <span>${zona.nombre}</span>
-            </div>
-            <div class="timer-control">
-                <span>Minutos:</span>
-                <input type="range" min="0" max="60" value="${zona.minutos}" oninput="cambiarMinutos(${index}, this.value)">
-                <span class="time-display" id="display-min-${index}">${zona.minutos}m</span>
-            </div>
-            <div class="days-selector">
-                ${diasSemana.map((dia, dIdx) => `
-                    <div class="day-btn ${zona.dias.includes(dIdx) ? 'selected' : ''} ${dIdx === hoyIdx ? 'today' : ''}" 
-                         onclick="toggleDia(${index}, ${dIdx})">${dia}</div>
-                `).join('')}
-            </div>
-        `;
-        container.appendChild(card);
-    });
-}
-
-function cambiarMinutos(index, valor) {
-    zonas[index].minutos = parseInt(valor);
-    document.getElementById(`display-min-${index}`).innerText = valor + 'm';
-}
-
-function toggleDia(zIdx, dIdx) {
-    const arr = zonas[zIdx].dias;
-    const posicion = arr.indexOf(dIdx);
-    if(posicion > -1) arr.splice(posicion, 1);
-    else arr.push(dIdx);
-    renderizarConfiguracion();
-}
-
-function guardarConfiguracion() {
-    local_guardarEstadoGlobal(); 
+function enviarConfiguracionFlashESP32() {
     const payload = {
-        comando: "guardar_config",
-        version_frontend: CONFIG_VERSION,
-        start_time: startTimeConfigurado, 
+        comando: "guardar_config_maestra",
+        build: CONFIG_VERSION,
         timeout_tanque: timeoutTanqueConfigurado,
-        zonas: zonas.map(z => ({id: z.id, min: z.minutos, dias: z.dias}))
+        programas: programas
     };
-    console.log("JSON enviado:", JSON.stringify(payload, null, 2));
-    alert("⚙️ Ajustes guardados.");
-    navegarA("monitor.html"); 
+    console.log("JSON Maestro enviado hacia el LittleFS del ESP32:", JSON.stringify(payload, null, 2));
+    alert("🚀 ¡Configuración de programas sincronizada por red con el ESP32!");
+    navegarA("monitor.html");
 }
