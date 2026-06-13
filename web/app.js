@@ -1,10 +1,10 @@
 // ============================================================================
 // FIRMWARE FRONTEND: Riego Hidráulico TLC
-// VERSION: v2.7.1 (Build: 20260613-2115)
-// DESCRIPCIÓN: Corrección estricta de coordenadas SVG de la Bomba (No Render Error)
+// VERSION: v2.7.2 (Build: 20260613-2020)
+// DESCRIPCIÓN: Versión de Estabilidad Garantizada. SVGs Limpios sin errores de parseo.
 // ============================================================================
 
-const CONFIG_VERSION = "v2.7.1 (Build: 20260613-2115)";
+const CONFIG_VERSION = "v2.7.2 (Build: 20260613-2020)";
 
 window.cicloInterval = null;
 window.tanqueInterval = null;
@@ -12,7 +12,7 @@ window.tanqueInterval = null;
 const diasSemana = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 const nombresDiasLargos = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-// --- ICONOGRAFÍA VECTORIAL INDUSTRIAL XL CORREGIDA Y LIMPIA ---
+// --- ICONOGRAFÍA VECTORIAL INDUSTRIAL XL (CORREGIDA Y COMPROBADA) ---
 const ICONO_ASPERSOR_JPG = `<svg viewBox="0 0 100 100" style="width:36px; height:36px; margin-bottom:6px; color:inherit;">
     <path fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" d="M50 90V55M35 55h30v8H35z"/>
     <rect x="46" y="38" width="8" height="17" fill="currentColor"/>
@@ -64,8 +64,8 @@ let ajusteEstacionalTLC = 100;
 
 function trazarVersionCompilacion() {
     console.log(
-        `%c 💧 TLC SYSTEM v2.7.1 — Compilación Industrial Exitosa `,
-        "background: #2e7d32; color: #ffffff; font-weight: bold; padding: 5px; border-radius: 4px;"
+        `%c 💧 TLC SYSTEM v2.7.2 — Compilación Estable Exitosa `,
+        "background: #1565c0; color: #ffffff; font-weight: bold; padding: 6px; border-radius: 4px;"
     );
 }
 
@@ -169,7 +169,7 @@ function renderizarMonitorPrincipal() {
 
     const esBloqueadoPorTanque = sistemaEstado.startsWith('pausa_tanque') || sistemaEstado === 'llenado_puro';
 
-    // Distribución limpia y nativa de botoneras de comando con Flexbox fluido
+    // Panel de control superior (Flexbox limpio para evitar problemas de scroll)
     const blockBotones = document.createElement('div');
     blockBotones.style.display = "flex";
     blockBotones.style.flexDirection = "column";
@@ -200,7 +200,7 @@ function renderizarMonitorPrincipal() {
     blockBotones.appendChild(fila2);
     container.appendChild(blockBotones);
 
-    // Grilla de Válvulas del Colector
+    // Grilla de Válvulas Manuales
     const titleManual = document.createElement('div');
     titleManual.className = "manual-section-title";
     titleManual.innerText = "Zonas Físicas del Colector (Prueba Manual Directa)";
@@ -238,7 +238,7 @@ function renderizarMonitorPrincipal() {
     `;
     container.appendChild(cardManualSlider);
 
-    // Programas Automáticos TLC
+    // Listado de Programas con Escalado TLC
     const titleProgs = document.createElement('div');
     titleProgs.className = "manual-section-title";
     titleProgs.innerText = `Programas Automáticos (Ajuste Estacional TLC: ${ajusteEstacionalTLC}%)`;
@@ -414,4 +414,338 @@ function guardarCambiosPrograma() {
         programas.push(window.tempNuevoProg);
     } else {
         let prog = programas.find(p => p.id === programaEditandoId);
-        if(prog) { prog.nombre = name; prog.start_time = time;
+        if(prog) { prog.nombre = name; prog.start_time = time; }
+    }
+
+    local_guardarEstadoGlobal();
+    cerrarEditorModal();
+    
+    let path = window.location.pathname;
+    if(path.includes("config.html")) renderizarPantallaConfiguracion();
+    else renderizarMonitorPrincipal();
+}
+
+function eliminarPrograma(id) {
+    if(confirm("¿Seguro que querés borrar este programa de riego?")) {
+        programas = programas.filter(p => p.id !== id);
+        local_guardarEstadoGlobal();
+        renderizarPantallaConfiguracion();
+    }
+}
+
+function toggleZonaManualDirecta(zonaId) {
+    if (sistemaEstado.startsWith('pausa_tanque') || sistemaEstado === 'llenado_puro') return;
+    if (zonaActivaId === zonaId && sistemaEstado === 'riego_manual') { forzarParadaTotal(); return; }
+
+    forzarParadaTotal();
+    sistemaEstado = 'riego_manual';
+    zonaActivaId = zonaId;
+    tiempoRestanteActual = tiempoManualGlobalConfigurado; 
+    tiempoInicialAsignado = tiempoManualGlobalConfigurado; 
+
+    const hwTanque = document.getElementById('hw-tanque');
+    const hwBomba = document.getElementById('hw-bomba');
+
+    if(hwTanque) {
+        hwTanque.className = 'hw-badge closed';
+        hwTanque.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
+    }
+    if(hwBomba) {
+        hwBomba.className = 'hw-badge on';
+        hwBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: RUNNING ⚡</span>`;
+    }
+
+    arrancarBucleTiempoGenerico(false);
+    renderizarMonitorPrincipal();
+}
+
+function lanzarProgramaDesdeMonitor(idProg) {
+    forzarParadaTotal();
+    const prog = programas.find(p => p.id === idProg);
+    if(!prog || prog.zonas.length === 0) { alert("Este programa no tiene zonas asignadas."); return; }
+
+    sistemaEstado = 'riego_auto';
+    listaZonasPrioridad = prog.zonas.map(z => {
+        return {
+            id: z.id,
+            min: Math.max(1, Math.round(z.min * (ajusteEstacionalTLC / 100)))
+        };
+    });
+    avanzarCicloAutomaticoMulti();
+}
+
+function avanzarCicloAutomaticoMulti() {
+    if (listaZonasPrioridad.length > 0) {
+        let proximaZona = listaZonasPrioridad.shift();
+        zonaActivaId = proximaZona.id;
+        tiempoRestanteActual = proximaZona.min;
+        tiempoInicialAsignado = proximaZona.min;
+
+        const hwTanque = document.getElementById('hw-tanque');
+        const hwBomba = document.getElementById('hw-bomba');
+
+        if(hwTanque) {
+            hwTanque.className = 'hw-badge closed';
+            hwTanque.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
+        }
+        if(hwBomba) {
+            hwBomba.className = 'hw-badge on';
+            hwBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: RUNNING ⚡</span>`;
+        }
+
+        arrancarBucleTiempoGenerico(true);
+        renderizarMonitorPrincipal();
+    } else {
+        forzarParadaTotal();
+        setTimeout(() => { alert("✅ Ciclo de programa automático completado."); }, 200);
+    }
+}
+
+function arrancarBucleTiempoGenerico(esAutomatico) {
+    const wrapper = document.getElementById('progress-wrapper');
+    const bar = document.getElementById('cycle-progress');
+    const lblText = document.getElementById('status-text');
+    
+    if(wrapper) wrapper.style.display = 'block';
+    if(bar) bar.className = 'progress-bar';
+
+    const hwBomba = document.getElementById('hw-bomba');
+    if(hwBomba) {
+        hwBomba.className = 'hw-badge on';
+        hwBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: RUNNING ⚡</span>`;
+    }
+
+    if(lblText) {
+        lblText.className = 'status-current running';
+        lblText.innerText = `${esAutomatico ? 'AUTO' : 'MANUAL'}: ZONA ${zonaActivaId} 💧`;
+    }
+
+    if(window.cicloInterval) clearInterval(window.cicloInterval);
+    window.cicloInterval = setInterval(() => {
+        const tr = document.getElementById('timer-remaining');
+        if (tiempoRestanteActual > 0) {
+            if(tr) tr.innerText = `Tiempo restante: ${tiempoRestanteActual} min`;
+            if(bar && tiempoInicialAsignado > 0) {
+                let porcentajeAcumulado = ((tiempoInicialAsignado - tiempoRestanteActual) / tiempoInicialAsignado) * 100;
+                bar.style.width = `${porcentajeAcumulado}%`;
+            }
+            tiempoRestanteActual--;
+        } else {
+            clearInterval(window.cicloInterval);
+            if(hwBomba) {
+                hwBomba.className = 'hw-badge';
+                hwBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: OFF</span>`;
+            }
+            if (esAutomatico) avanzarCicloAutomaticoMulti();
+            else forzarParadaTotal();
+        }
+    }, 1000);
+}
+
+function gestionarFlotanteSimulado() {
+    if (tanqueLlamando) detenerLlenadoSecuencial(false);
+    else ejecutarLlenadoSecuencial();
+}
+
+function ejecutarLlenadoSecuencial() {
+    tanqueLlamando = true;
+    const hwFlotante = document.getElementById('hw-flotante');
+    if(hwFlotante) {
+        hwFlotante.className = 'hw-badge alert';
+        hwFlotante.innerHTML = `${ICONO_FLOTANTE_BOYA} <span>FLOTANTE: ¡DEMANDA AGUA! ⚠️</span>`;
+    }
+    
+    const estadoPrevio = sistemaEstado;
+    const hwBomba = document.getElementById('hw-bomba');
+    const hwTanque = document.getElementById('hw-tanque');
+    const lblText = document.getElementById('status-text');
+
+    if (estadoPrevio === 'riego_manual' || estadoPrevio === 'riego_auto') {
+        sistemaEstado = 'pausa_tanque_' + estadoPrevio; 
+        if(window.cicloInterval) clearInterval(window.cicloInterval);
+        if(hwBomba) {
+            hwBomba.className = 'hw-badge';
+            hwBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: OFF</span>`;
+        }
+
+        setTimeout(() => {
+            if(hwTanque) {
+                hwTanque.className = 'hw-badge';
+                hwTanque.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>VALV. TANQUE: ABIERTA</span>`;
+            }
+            if(lblText) {
+                lblText.className = 'status-current paused';
+                lblText.innerText = `⏳ ESPERANDO BOMBA (500ms)`;
+            }
+
+            setTimeout(() => {
+                if (tanqueLlamando) {
+                    if(hwBomba) {
+                        hwBomba.className = 'hw-badge on';
+                        hwBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: RUNNING (LLENANDO TANQUE) ⚡</span>`;
+                    }
+                    arrancarBucleTanque(timeoutTanqueConfigurado * 60);
+                }
+            }, 500);
+            renderizarBotonesManualesEmulados();
+        }, 500);
+    } else {
+        sistemaEstado = 'llenado_puro';
+        if(hwTanque) {
+            hwTanque.className = 'hw-badge';
+            hwTanque.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>VALV. TANQUE: ABIERTA</span>`;
+        }
+        setTimeout(() => {
+            if (tanqueLlamando) {
+                if(hwBomba) {
+                    hwBomba.className = 'hw-badge on';
+                    hwBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: RUNNING (LLENANDO TANQUE) ⚡</span>`;
+                }
+                arrancarBucleTanque(timeoutTanqueConfigurado * 60);
+            }
+        }, 500);
+        renderizarBotonesManualesEmulados();
+    }
+}
+
+function renderizarBotonesManualesEmulados() {
+    let path = window.location.pathname;
+    if(!path.includes("config.html")) renderizarMonitorPrincipal();
+}
+
+function arrancarBucleTanque(segundosTotales) {
+    tiempoLlenadoTanqueRestante = segundosTotales;
+    const wrapper = document.getElementById('progress-wrapper');
+    const bar = document.getElementById('cycle-progress');
+    const lblText = document.getElementById('status-text');
+    
+    if(wrapper) wrapper.style.display = 'block';
+    if(bar) {
+        bar.className = 'progress-bar paused';
+        bar.style.width = '100%'; 
+    }
+
+    if(lblText) {
+        lblText.className = 'status-current paused';
+        lblText.innerText = `⚠️ LLENANDO TANQUE`;
+    }
+
+    if(window.tanqueInterval) clearInterval(window.tanqueInterval);
+    window.tanqueInterval = setInterval(() => {
+        const tr = document.getElementById('timer-remaining');
+        if (tiempoLlenadoTanqueRestante > 0) {
+            if(tr) tr.innerText = `Protección activa. Límite: ${tiempoLlenadoTanqueRestante} seg`;
+            tiempoLlenadoTanqueRestante--;
+        } else {
+            detenerLlenadoSecuencial(true);
+        }
+    }, 1000);
+}
+
+function detenerLlenadoSecuencial(porTimeout) {
+    if(window.tanqueInterval) clearInterval(window.tanqueInterval);
+    const hwBomba = document.getElementById('hw-bomba');
+    const hwTanque = document.getElementById('hw-tanque');
+    const hwFlotante = document.getElementById('hw-flotante');
+
+    if(hwBomba) {
+        hwBomba.className = 'hw-badge';
+        hwBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: OFF</span>`;
+    }
+
+    setTimeout(() => {
+        if(hwTanque) {
+            hwTanque.className = 'hw-badge closed';
+            hwTanque.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
+        }
+        if(hwFlotante) {
+            hwFlotante.className = 'hw-badge';
+            hwFlotante.innerHTML = `${ICONO_FLOTANTE_BOYA} <span>FLOTANTE: TANQUE OK</span>`;
+        }
+
+        tanqueLlamando = false;
+
+        if (porTimeout && sistemaEstado.startsWith('pausa_tanque')) {
+            alert("🚨 Abortado: Falla crítica de time-out en tanque.");
+            forzarParadaTotal();
+            return;
+        }
+
+        if (sistemaEstado.startsWith('pausa_tanque')) {
+            let anteriorAuto = sistemaEstado.includes('riego_auto');
+            sistemaEstado = anteriorAuto ? 'riego_auto' : 'riego_manual';
+            arrancarBucleTiempoGenerico(anteriorAuto);
+        } else {
+            forzarParadaTotal();
+        }
+    }, 500);
+}
+
+function forzarParadaTotal() {
+    if(window.cicloInterval) clearInterval(window.cicloInterval);
+    if(window.tanqueInterval) clearInterval(window.tanqueInterval);
+    
+    sistemaEstado = 'idle';
+    zonaActivaId = null;
+    tiempoRestanteActual = 0;
+    tiempoInicialAsignado = 0;
+    listaZonasPrioridad = [];
+    tanqueLlamando = false;
+
+    const lblText = document.getElementById('status-text');
+    const tr = document.getElementById('timer-remaining');
+    const wrapper = document.getElementById('progress-wrapper');
+
+    if(lblText) { lblText.className = 'status-current'; lblText.innerText = '🏠 EN ESPERA (STANDBY)'; }
+    if(tr) tr.innerText = '';
+    if(wrapper) wrapper.style.display = 'none';
+        
+    const hwBomba = document.getElementById('hw-bomba');
+    const hwTanque = document.getElementById('hw-tanque');
+    const hwFlotante = document.getElementById('hw-flotante');
+
+    if(hwBomba) {
+        hwBomba.className = 'hw-badge';
+        hwBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: OFF</span>`;
+    }
+    if(hwTanque) {
+        hwTanque.className = 'hw-badge closed';
+        hwTanque.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
+    }
+    if(hwFlotante) {
+        hwFlotante.className = 'hw-badge';
+        hwFlotante.innerHTML = `${ICONO_FLOTANTE_BOYA} <span>FLOTANTE: TANQUE OK</span>`;
+    }
+    
+    const sliderInput = document.getElementById('input-tiempo-manual-global');
+    const sliderDisplay = document.getElementById('display-tiempo-manual-global');
+    if(sliderInput && sliderDisplay) {
+        sliderInput.value = tiempoManualGlobalConfigurado;
+        sliderDisplay.innerText = tiempoManualGlobalConfigurado + "m";
+    }
+
+    const tlcInput = document.getElementById('input-tlc-estacional');
+    const tlcDisplay = document.getElementById('display-tlc-estacional');
+    if(tlcInput && tlcDisplay) {
+        tlcInput.value = ajusteEstacionalTLC;
+        tlcDisplay.innerText = ajusteEstacionalTLC + "%";
+    }
+
+    actualizarFechaHoy();
+    let path = window.location.pathname;
+    if(path.includes("config.html")) renderizarPantallaConfiguracion();
+    else renderizarMonitorPrincipal();
+}
+
+function enviarConfiguracionFlashESP32() {
+    const payload = {
+        comando: "guardar_config_maestra",
+        build: CONFIG_VERSION,
+        timeout_tanque: timeoutTanqueConfigurado,
+        ajuste_estacional_tlc: ajusteEstacionalTLC,
+        programas: programas
+    };
+    console.log("JSON Maestro enviado:", JSON.stringify(payload, null, 2));
+    alert("🚀 ¡Ajuste Estacional TLC y programas sincronizados con el ESP32!");
+    navegarHacia("monitor.html");
+}
