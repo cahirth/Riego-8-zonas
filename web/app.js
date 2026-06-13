@@ -183,4 +183,81 @@ function detenerLlenadoSecuencial(porTimeout) {
     document.getElementById('hw-bomba').innerText = 'BOMBA: OFF';
 
     setTimeout(() => {
-        document.getElementById('hw-tanque').className
+        document.getElementById('hw-tanque').className = 'hw-badge closed';
+        document.getElementById('hw-tanque').innerText = 'VALV. TANQUE: CERRADA (NC) 🔴';
+
+        tanqueLlamando = false;
+        const btnSim = document.getElementById('btn-sim-flotante');
+        if(btnSim) {
+            btnSim.innerText = 'Simular Falta de Agua (Llamar)';
+            btnSim.style.background = 'var(--warning)';
+        }
+
+        document.getElementById('hw-flotante').className = 'hw-badge';
+        document.getElementById('hw-flotante').innerText = 'FLOTANTE: TANQUE OK';
+
+        if (porTimeout && sistemaEstado.startsWith('pausa_tanque')) {
+            alert("🚨 Alerta: Llenado excedió límite. Riego cancelado.");
+            forzarParadaTotal();
+            return;
+        }
+
+        if (sistemaEstado.startsWith('pausa_tanque')) restaurarRiegoPausado();
+        else forzarParadaTotal();
+    }, 500);
+}
+
+function restaurarRiegoPausado() {
+    const origen = sistemaEstado;
+    document.getElementById('cycle-progress').className = 'progress-bar'; 
+    document.getElementById('status-text').className = 'status-current running';
+    document.getElementById('status-text').innerText = `⏳ PREPARANDO RIEGO (500ms)`;
+
+    setTimeout(() => {
+        document.getElementById('hw-bomba').className = 'hw-badge on';
+        document.getElementById('hw-bomba').innerText = 'BOMBA: RUNNING ⚡';
+
+        if (origen === 'pausa_tanque_riego_manual') {
+            sistemaEstado = 'riego_manual';
+            arrancarBucleTiempo(false);
+        } else if (origen === 'pausa_tanque_riego_auto') {
+            sistemaEstado = 'riego_auto';
+            arrancarBucleTiempo(true);
+        }
+        renderizarBotonesManuales();
+    }, 500);
+}
+
+function toggleZonaManual(zonaId) {
+    if (sistemaEstado.startsWith('pausa_tanque') || sistemaEstado === 'llenado_puro') return;
+    if (zonaActivaId === zonaId && sistemaEstado === 'riego_manual') { forzarParadaTotal(); return; }
+
+    forzarParadaTotal();
+    const zonaConfig = zonas.find(z => z.id === zonaId);
+    if(zonaConfig.minutos === 0) return;
+
+    sistemaEstado = 'riego_manual';
+    zonaActivaId = zonaId;
+    tiempoRestanteActual = zonaConfig.minutos;
+
+    document.getElementById('hw-tanque').className = 'hw-badge closed';
+    document.getElementById('hw-tanque').innerText = 'VALV. TANQUE: CERRADA (NC) 🔴';
+    document.getElementById('hw-bomba').className = 'hw-badge on';
+    document.getElementById('hw-bomba').innerText = 'BOMBA: RUNNING ⚡';
+
+    arrancarBucleTiempo(false);
+    renderizarBotonesManuales();
+}
+
+function arrancarBucleTiempo(esAutomatico) {
+    document.getElementById('progress-wrapper').style.display = 'block';
+    const zonaConfig = zonas.find(z => z.id === zonaActivaId);
+
+    if(cicloInterval) clearInterval(cicloInterval);
+    document.getElementById('status-text').className = 'status-current running';
+    document.getElementById('status-text').innerText = `${esAutomatico ? 'AUTO' : 'MANUAL'}: RIEGO ZONA ${zonaActivaId} 💧`;
+
+    cicloInterval = setInterval(() => {
+        if (tiempoRestanteActual > 0) {
+            document.getElementById('timer-remaining').innerText = `Tiempo restante: ${tiempoRestanteActual} min`;
+            let pct = ((zonaConfig.minutos - tiempoRestante
