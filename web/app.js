@@ -1,12 +1,11 @@
 // ============================================================================
 // FIRMWARE FRONTEND: Riego Hidráulico TLC
-// VERSION: v2.0.3 (Build: 20260613-1915)
-// DESCRIPCIÓN: Inicialización global estricta de intervalos de tiempo (No ReferenceError)
+// VERSION: v2.0.4 (Build: 20260613-1950)
+// DESCRIPCIÓN: Unificación estricta de nombres de función para guardado (Castellano)
 // ============================================================================
 
-const CONFIG_VERSION = "v2.0.3 (Build: 20260613-1915)";
+const CONFIG_VERSION = "v2.0.4 (Build: 20260613-1950)";
 
-// DECLARACIÓN EXPLÍCITA DE VARIABLES GLOBALES DE CONTROL
 window.cicloInterval = null;
 window.tanqueInterval = null;
 
