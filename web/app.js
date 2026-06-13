@@ -1,10 +1,10 @@
 // ============================================================================
 // FIRMWARE FRONTEND: Riego Hidráulico TLC
-// VERSION: v2.4.0 (Build: 20260613-2330)
-// DESCRIPCIÓN: Íconos realistas basados en JPGs + Ajuste Estacional Global Tipo Hunter
+// VERSION: v2.5.0 (Build: 20260613-2350)
+// DESCRIPCIÓN: Íconos XL + Reubicación de Slider Manual + Ajuste Estacional Pro TLC (Chau H***er)
 // ============================================================================
 
-const CONFIG_VERSION = "v2.4.0 (Build: 20260613-2330)";
+const CONFIG_VERSION = "v2.5.0 (Build: 20260613-2350)";
 
 window.cicloInterval = null;
 window.tanqueInterval = null;
@@ -12,20 +12,20 @@ window.tanqueInterval = null;
 const diasSemana = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 const nombresDiasLargos = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-// --- ICONOGRAFÍA REALISTA VECTORIAL DETALLADA (CALCADA DE TUS FOTOS) ---
-const ICONO_ASPERSOR_JPG = `<svg viewBox="0 0 100 100" style="width:32px; height:32px; margin-bottom:4px; color:inherit;">
+// --- ICONOGRAFÍA VECTORIAL INDUSTRIAL XL (CALCADA DE COMPONENTES REALES) ---
+const ICONO_ASPERSOR_JPG = `<svg viewBox="0 0 100 100" style="width:36px; height:36px; margin-bottom:6px; color:inherit;">
     <path fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" d="M50 90V55M35 55h30v8H35z"/>
     <rect x="46" y="38" width="8" height="17" fill="currentColor"/>
     <path fill="none" stroke="#2196F3" stroke-width="3.5" stroke-dasharray="4 3" d="M42 32C32 28 18 32 10 42M58 32C68 28 82 32 90 42"/>
     <path fill="none" stroke="#4CAF50" stroke-width="4" stroke-linecap="round" d="M15 90c15-8 55-8 70 0"/>
 </svg>`;
 
-const ICONO_BOMBA_JPG = `<svg viewBox="0 0 100 100" style="width:24px; height:24px; vertical-align:middle; margin-right:8px;">
+const ICONO_BOMBA_JPG = `<svg viewBox="0 0 100 100" style="width:28px; height:28px; vertical-align:middle; margin-right:8px;">
     <circle cx="35" cy="55" r="22" fill="none" stroke="currentColor" stroke-width="5"/>
     <path fill="currentColor" d="M35 33h45v44H35zM50 20h16v13H50zM18 55h17v6H18zM70 42h10v4H70zm0 10h10v4H70zm0 10h10v4H70z"/>
 </svg>`;
 
-const ICONO_FLOTANTE_JPG = `<svg viewBox="0 0 100 100" style="width:24px; height:24px; vertical-align:middle; margin-right:8px;">
+const ICONO_FLOTANTE_JPG = `<svg viewBox="0 0 100 100" style="width:28px; height:28px; vertical-align:middle; margin-right:8px;">
     <path fill="none" stroke="currentColor" stroke-width="4" d="M75 10v40"/>
     <rect x="70" y="50" width="10" height="12" fill="currentColor"/>
     <rect x="30" y="32" width="28" height="16" rx="6" fill="none" stroke="currentColor" stroke-width="4" transform="rotate(-25 44 40)"/>
@@ -53,14 +53,12 @@ let timeoutTanqueConfigurado = 1;
 let listaZonasPrioridad = [];
 let tanqueLlamando = false;
 let tiempoManualGlobalConfigurado = 5;
-
-// VARIABLE TIPO HUNTER: Factor multiplicador porcentual del tiempo de riego estacional
-let ajusteEstacionalHunter = 100; 
+let ajusteEstacionalTLC = 100; 
 
 function trazarVersionCompilacion() {
     console.log(
-        `%c 💧 TLC MULTIPROGRAMA HUNTER — Active Version: ${CONFIG_VERSION} `,
-        "background: #2e7d32; color: #ffffff; font-weight: bold; padding: 4px; border-radius: 4px;"
+        `%c 💧 TLC SYSTEM MULTIPROGRAMA CUSTOM — Version: ${CONFIG_VERSION} `,
+        "background: #0d47a1; color: #ffffff; font-weight: bold; padding: 4px; border-radius: 4px;"
     );
 }
 
@@ -69,7 +67,7 @@ function local_guardarEstadoGlobal() {
         programas: programas,
         timeoutTanqueConfigurado: timeoutTanqueConfigurado,
         tiempoManualGlobalConfigurado: tiempoManualGlobalConfigurado,
-        ajusteEstacionalHunter: ajusteEstacionalHunter
+        ajusteEstacionalTLC: ajusteEstacionalTLC
     };
     localStorage.setItem('TLC_RIEGO_MULTI_DATA', JSON.stringify(backup));
 }
@@ -82,7 +80,7 @@ function local_recuperarEstadoGoblal() {
         programas = cache.programas;
         timeoutTanqueConfigurado = cache.timeoutTanqueConfigurado;
         if(cache.tiempoManualGlobalConfigurado) tiempoManualGlobalConfigurado = cache.tiempoManualGlobalConfigurado;
-        if(cache.ajusteEstacionalHunter !== undefined) ajusteEstacionalHunter = cache.ajusteEstacionalHunter;
+        if(cache.ajusteEstacionalTLC !== undefined) ajusteEstacionalTLC = cache.ajusteEstacionalTLC;
     }
     
     const sliderInput = document.getElementById('input-tiempo-manual-global');
@@ -92,11 +90,11 @@ function local_recuperarEstadoGoblal() {
         sliderDisplay.innerText = tiempoManualGlobalConfigurado + "m";
     }
 
-    const hunterInput = document.getElementById('input-hunter-estacional');
-    const hunterDisplay = document.getElementById('display-hunter-estacional');
-    if(hunterInput && hunterDisplay) {
-        hunterInput.value = ajusteEstacionalHunter;
-        hunterDisplay.innerText = ajusteEstacionalHunter + "%";
+    const tlcInput = document.getElementById('input-tlc-estacional');
+    const tlcDisplay = document.getElementById('display-tlc-estacional');
+    if(tlcInput && tlcDisplay) {
+        tlcInput.value = ajusteEstacionalTLC;
+        tlcDisplay.innerText = ajusteEstacionalTLC + "%";
     }
     
     inyectarIconosEstaticosHardware();
@@ -116,9 +114,9 @@ function actualizarDisplayTimeout(valor) {
     local_guardarEstadoGlobal();
 }
 
-function actualizarDisplayHunter(valor) {
-    ajusteEstacionalHunter = parseInt(valor);
-    const display = document.getElementById('display-hunter-estacional');
+function actualizarDisplayTLC(valor) {
+    ajusteEstacionalTLC = parseInt(valor);
+    const display = document.getElementById('display-tlc-estacional');
     if(display) display.innerText = valor + "%";
     local_guardarEstadoGlobal();
 }
@@ -156,6 +154,7 @@ function renderizarMonitorPrincipal() {
 
     const esBloqueadoPorTanque = sistemaEstado.startsWith('pausa_tanque') || sistemaEstado === 'llenado_puro';
 
+    // 1. Grilla de Válvulas 1..8
     const titleManual = document.createElement('div');
     titleManual.className = "manual-section-title";
     titleManual.innerText = "Zonas Físicas del Colector (Prueba Manual Directa)";
@@ -177,9 +176,26 @@ function renderizarMonitorPrincipal() {
     });
     container.appendChild(gridZonas);
 
+    // 2. INYECCIÓN DEL SLIDER MANUAL REUBICADO JUSTO DEBAJO DE LAS VÁLVULAS
+    const cardManualSlider = document.createElement('div');
+    cardManualSlider.className = "zone-card";
+    cardManualSlider.style.marginTop = "12px";
+    cardManualSlider.style.marginBottom = "20px";
+    cardManualSlider.style.border = "1px solid #0288d1";
+    cardManualSlider.innerHTML = `
+        <div class="zone-name" style="color: #0288d1; font-weight: bold;">Tiempo de Activación Manual</div>
+        <div class="timer-control" style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
+            <span style="font-size: 13px; color: #555;">Duración:</span>
+            <input type="range" min="1" max="60" value="${tiempoManualGlobalConfigurado}" id="input-tiempo-manual-global" style="flex-grow: 1; margin: 0 15px;" oninput="actualizarDisplayTiempoManualGlobal(this.value)">
+            <span class="time-display" id="display-tiempo-manual-global" style="font-weight: bold; color: #0288d1; font-size: 16px; min-width: 35px; text-align: right;">${tiempoManualGlobalConfigurado}m</span>
+        </div>
+    `;
+    container.appendChild(cardManualSlider);
+
+    // 3. Programas Automáticos con Factor TLC
     const titleProgs = document.createElement('div');
     titleProgs.className = "manual-section-title";
-    titleProgs.innerText = `Programas Automáticos (Ajuste Estacional: ${ajusteEstacionalHunter}%)`;
+    titleProgs.innerText = `Programas Automáticos (Ajuste Estacional TLC: ${ajusteEstacionalTLC}%)`;
     container.appendChild(titleProgs);
 
     programas.forEach(prog => {
@@ -189,9 +205,8 @@ function renderizarMonitorPrincipal() {
         
         let stringDias = prog.dias.map(d => diasSemana[d]).join(' - ');
         
-        // CALCULO TIPO HUNTER: Aplica el factor estacional global a la visualización
         let listadoZonas = prog.zonas.map(z => {
-            let minsCalculados = Math.max(1, Math.round(z.min * (ajusteEstacionalHunter / 100)));
+            let minsCalculados = Math.max(1, Math.round(z.min * (ajusteEstacionalTLC / 100)));
             return `Z${z.id} (${minsCalculados}m)`;
         }).join(', ');
 
@@ -222,7 +237,7 @@ function renderizarPantallaConfiguracion() {
         let stringDias = prog.dias.map(d => diasSemana[d]).join(' - ');
         
         let totalNominal = prog.zonas.reduce((acc, z) => acc + z.min, 0);
-        let totalEscalado = prog.zonas.reduce((acc, z) => acc + Math.max(1, Math.round(z.min * (ajusteEstacionalHunter / 100))), 0);
+        let totalEscalado = prog.zonas.reduce((acc, z) => acc + Math.max(1, Math.round(z.min * (ajusteEstacionalTLC / 100))), 0);
 
         card.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:8px;">
@@ -236,7 +251,7 @@ function renderizarPantallaConfiguracion() {
                 <div>⏰ Hora Arranque: <strong>${prog.start_time} hs</strong></div>
                 <div>⏱️ Duración Base: <strong>${totalNominal} min</strong></div>
                 <div style="grid-column: span 2; margin-top:5px;">📅 Días de Riego: <span style="color:var(--primary); font-weight:bold;">${stringDias || 'Ninguno seleccionado'}</span></div>
-                <div style="grid-column: span 2; margin-top:5px; color:var(--success); font-weight:bold;">⏱️ Tiempo con Ajuste Hunter (${ajusteEstacionalHunter}%): ${totalEscalado} min</div>
+                <div style="grid-column: span 2; margin-top:5px; color:var(--success); font-weight:bold;">⏱️ Tiempo con Ajuste TLC (${ajusteEstacionalTLC}%): ${totalEscalado} min</div>
             </div>
         `;
         container.appendChild(card);
@@ -400,11 +415,10 @@ function lanzarProgramaDesdeMonitor(idProg) {
 
     sistemaEstado = 'riego_auto';
     
-    // FACTOR HUNTER APLICADO: Carga la cola con los minutos escalados según la estación
     listaZonasPrioridad = prog.zonas.map(z => {
         return {
             id: z.id,
-            min: Math.max(1, Math.round(z.min * (ajusteEstacionalHunter / 100)))
+            min: Math.max(1, Math.round(z.min * (ajusteEstacionalTLC / 100)))
         };
     });
     avanzarCicloAutomaticoMulti();
@@ -479,8 +493,10 @@ function ejecutarLlenadoSecuencial() {
     document.getElementById('hw-flotante').innerText = 'FLOTANTE: ¡DEMANDA AGUA! ⚠️';
     
     const btnSim = document.getElementById('btn-sim-flotante');
-    btnSim.innerText = 'Tanque Lleno (Cortar Flotante)';
-    btnSim.style.background = 'var(--success)';
+    if(btnSim) {
+        btnSim.innerText = 'Tanque Lleno (Cortar Flotante)';
+        btnSim.style.background = 'var(--success)';
+    }
 
     const estadoPrevio = sistemaEstado;
     const hwBomba = document.getElementById('hw-bomba');
@@ -640,11 +656,11 @@ function forzarParadaTotal() {
         sliderDisplay.innerText = tiempoManualGlobalConfigurado + "m";
     }
 
-    const hunterInput = document.getElementById('input-hunter-estacional');
-    const hunterDisplay = document.getElementById('display-hunter-estacional');
-    if(hunterInput && hunterDisplay) {
-        hunterInput.value = ajusteEstacionalHunter;
-        hunterDisplay.innerText = ajusteEstacionalHunter + "%";
+    const tlcInput = document.getElementById('input-tlc-estacional');
+    const tlcDisplay = document.getElementById('display-tlc-estacional');
+    if(tlcInput && tlcDisplay) {
+        tlcInput.value = ajusteEstacionalTLC;
+        tlcDisplay.innerText = ajusteEstacionalTLC + "%";
     }
 
     actualizarFechaHoy();
@@ -658,10 +674,10 @@ function enviarConfiguracionFlashESP32() {
         comando: "guardar_config_maestra",
         build: CONFIG_VERSION,
         timeout_tanque: timeoutTanqueConfigurado,
-        ajuste_estacional_hunter: ajusteEstacionalHunter,
+        ajuste_estacional_tlc: ajusteEstacionalTLC,
         programas: programas
     };
     console.log("JSON Maestro enviado hacia el LittleFS del ESP32:", JSON.stringify(payload, null, 2));
-    alert("🚀 ¡Ajuste estacional Hunter y programas sincronizados con el ESP32!");
+    alert("🚀 ¡Ajuste Estacional TLC y programas sincronizados con el ESP32!");
     navegarHacia("monitor.html");
 }
