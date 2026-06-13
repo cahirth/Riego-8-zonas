@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Riego TLC - Ajustes</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <svg viewBox="0 0 24 24"><path d="M12,2.69C12,2.69 19,11.06 19,15.5A7,7 0 0,1 12,22.5A7,7 0 0,1 5,15.5C5,11.06 12,2.69 12,2.69Z"/></svg>
+            <span>Riego Hidráulico TLC</span>
+        </div>
+        <div class="screen">
+            <div class="config-section-title">
+                <svg viewBox="0 0 24 24"><path d="M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z"/></svg>
+                <span>Horario de Inicio (Programa 1)</span>
+            </div>
+            <div class="zone-card" style="margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between; padding: 20px;">
+                <div>
+                    <div class="zone-name">Hora de Arranque Ciclo</div>
+                    <small style="color: #666;">Secuencia automática programada</small>
+                </div>
+                <input type="time" id="input-start-time" class="time-input-styled" value="07:00" onchange="actualizarStartTime(this.value)">
+            </div>
+            <div class="config-section-title">
+                <svg viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4Z"/></svg>
+                <span>Parámetros Críticos del Tanque</span>
+            </div>
+            <div class="zone-card" style="margin-bottom: 25px; border: 1px solid var(--warning);">
+                <div class="zone-name" style="color: var(--warning);">Time-out Llenado de Tanque</div>
+                <p style="font-size: 11px; color: #666; margin: 0 0 10px 0;">Tiempo límite de bomba (0m = Llenado manual infinito).</p>
+                <div class="timer-control">
+                    <span>Límite Max:</span>
+                    <input type="range" min="0" max="8" value="1" id="input-timeout-tanque" oninput="actualizarDisplayTimeout(this.value)">
+                    <span class="time-display" id="display-timeout-tanque">1m</span>
+                </div>
+            </div>
+            <div class="config-section-title">
+                <svg viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4Z"/></svg>
+                <span>Programación por Zona de Riego</span>
+            </div>
+            <div class="zones-container" id="zones-master"></div>
+            <button class="btn btn-save" onclick="guardarConfiguracion()">
+                <svg viewBox="0 0 24 24"><path d="M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z"/></svg> Guardar Configuración en ESP32
+            </button>
+        </div>
+        <div class="nav-bar">
+            <a href="monitor.html" class="nav-item">
+                <svg viewBox="0 0 24 24"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></svg> Monitor
+            </a>
+            <a href="config.html" class="nav-item active">
+                <svg viewBox="0 0 24 24"><path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97..."></svg> Ajustes
+            </a>
+        </div>
+    </div>
+    <script src="app.js"></script>
+    <script>
+        window.onload = function() {
+            local_recuperarEstadoGoblal();
+            renderizarConfiguracion();
+        };
+    </script>
+</body>
+</html>
