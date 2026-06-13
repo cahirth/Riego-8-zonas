@@ -1,10 +1,10 @@
 // ============================================================================
 // FIRMWARE FRONTEND: Riego Hidráulico TLC
-// VERSION: v2.6.2 (Build: 20260613-2045)
-// DESCRIPCIÓN: Cabecera Fija (Sticky) + Botones distribuidos en Filas Únicas
+// VERSION: v2.6.3 (Build: 20260613-2055)
+// DESCRIPCIÓN: Corrección de Scroll Bloqueado + Cabecera Sticky Optimizada
 // ============================================================================
 
-const CONFIG_VERSION = "v2.6.2 (Build: 20260613-2045)";
+const CONFIG_VERSION = "v2.6.3 (Build: 20260613-2055)";
 
 window.cicloInterval = null;
 window.tanqueInterval = null;
@@ -13,19 +13,19 @@ const diasSemana = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 const nombresDiasLargos = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
 // --- ICONOGRAFÍA VECTORIAL INDUSTRIAL XL ---
-const ICONO_ASPERSOR_JPG = `<svg viewBox="0 0 100 100" style="width:36px; height:36px; margin-bottom:6px; color:inherit;">
+const ICONO_ASPERSOR_JPG = `<svg viewBox="0 0 100 100" style="width:34px; height:34px; margin-bottom:4px; color:inherit;">
     <path fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" d="M50 90V55M35 55h30v8H35z"/>
     <rect x="46" y="38" width="8" height="17" fill="currentColor"/>
     <path fill="none" stroke="#2196F3" stroke-width="3.5" stroke-dasharray="4 3" d="M42 32C32 28 18 32 10 42M58 32C68 28 82 32 90 42"/>
     <path fill="none" stroke="#4CAF50" stroke-width="4" stroke-linecap="round" d="M15 90c15-8 55-8 70 0"/>
 </svg>`;
 
-const ICONO_BOMBA_JPG = `<svg viewBox="0 0 100 100" style="width:28px; height:28px; vertical-align:middle; margin-right:8px;">
+const ICONO_BOMBA_JPG = `<svg viewBox="0 0 100 100" style="width:24px; height:24px; vertical-align:middle; margin-right:6px;">
     <circle cx="35" cy="55" r="22" fill="none" stroke="currentColor" stroke-width="5"/>
     <path fill="currentColor" d="M35 33h45v44H35zM50 20h16v13H50zM18 55h17v6H18zM70 42h10v4H70zm0 10h10v4H70zm0 10h10v4H70z"/>
 </svg>`;
 
-const ICONO_VALVULA_SOLENOIDE = `<svg viewBox="0 0 100 100" style="width:28px; height:28px; vertical-align:middle; margin-right:8px;">
+const ICONO_VALVULA_SOLENOIDE = `<svg viewBox="0 0 100 100" style="width:24px; height:24px; vertical-align:middle; margin-right:6px;">
     <rect x="38" y="10" width="24" height="26" rx="3" fill="currentColor"/>
     <rect x="46" y="36" width="8" height="10" fill="currentColor"/>
     <path fill="currentColor" d="M15 50l30 18V32zM85 50L55 32v36z"/>
@@ -33,7 +33,7 @@ const ICONO_VALVULA_SOLENOIDE = `<svg viewBox="0 0 100 100" style="width:28px; h
     <path d="M42 56h16v6H42z" fill="none" stroke="#fff" stroke-width="2"/>
 </svg>`;
 
-const ICONO_FLOTANTE_BOYA = `<svg viewBox="0 0 100 100" style="width:28px; height:28px; vertical-align:middle; margin-right:8px;">
+const ICONO_FLOTANTE_BOYA = `<svg viewBox="0 0 100 100" style="width:24px; height:24px; vertical-align:middle; margin-right:6px;">
     <path d="M15 25h12v10H15z" fill="currentColor"/>
     <path fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" d="M27 30l38 18"/>
     <circle cx="73" cy="52" r="14" fill="none" stroke="currentColor" stroke-width="4"/>
@@ -108,66 +108,89 @@ function local_recuperarEstadoGoblal() {
     inyectarEstilosCabeceraInmovil();
 }
 
-// Inyección dinámica de CSS para bloquear la pantalla superior (Imagen 2 - Línea Amarilla fija)
 function inyectarEstilosCabeceraInmovil() {
     const ID_ESTILOS_TLC = "estilos-cabecera-fija-tlc";
-    if (document.getElementById(ID_ESTILOS_TLC)) return;
-
-    const style = document.createElement('style');
-    style.id = ID_ESTILOS_TLC;
+    let style = document.getElementById(ID_ESTILOS_TLC);
+    if (!style) {
+        style = document.createElement('style');
+        style.id = ID_ESTILOS_TLC;
+        document.head.appendChild(style);
+    }
+    
     style.innerHTML = `
-        /* Inmoviliza el contenedor superior completo */
+        /* Habilitar scroll nativo en el html y cuerpo sin restricciones */
+        html, body {
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+            height: auto !important;
+        }
+
+        /* Contenedor Superior INMÓVIL (Sticky) */
         .app-header-sticky-container {
             position: -webkit-sticky;
             position: sticky;
             top: 0;
-            z-index: 999;
+            z-index: 1000;
             background: #ffffff;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+            padding-bottom: 6px;
             margin-bottom: 12px;
-        }
-        /* Ajustes de márgenes internos para optimizar espacio */
-        .header-main { margin-bottom: 0 !important; border-radius: 0 !important; }
-        .status-current { margin: 0 !important; border-radius: 0 !important; }
-        .hw-status-container { margin-bottom: 0 !important; padding: 8px 10px !important; border-radius: 0 !important; }
-        
-        /* Contenedores Flex en una sola fila para botones (Imagen 1) */
-        .fila-botones-triple {
-            display: flex;
-            gap: 6px;
-            margin-bottom: 8px;
             width: 100%;
+        }
+
+        /* Ajustes estructurales para liberar espacio */
+        .header-main { margin-bottom: 2px !important; border-radius: 0 !important; }
+        .status-current { margin: 2px 8px !important; padding: 10px !important; border-radius: 6px !important; }
+        .hw-status-container { margin: 2px 8px !important; padding: 6px 10px !important; border-radius: 6px !important; }
+        
+        /* Contenedores de Filas Únicas de Botones */
+        .fila-botones-triple {
+            display: table;
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: separate;
+            border-spacing: 6px 0;
+            margin-bottom: 8px;
         }
         .fila-botones-triple .btn {
-            flex: 1;
-            padding: 10px 4px !important;
+            display: table-cell;
+            width: 33.33%;
+            padding: 10px 2px !important;
             font-size: 11px !important;
-            white-space: nowrap;
+            font-weight: bold;
             text-align: center;
+            white-space: nowrap;
+            vertical-align: middle;
+            border-radius: 6px;
         }
+        
         .fila-botones-dual {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 15px;
+            display: table;
             width: 100%;
+            table-layout: fixed;
+            border-collapse: separate;
+            border-spacing: 6px 0;
+            margin-bottom: 14px;
         }
         .fila-botones-dual .btn {
-            flex: 1;
-            padding: 12px 6px !important;
+            display: table-cell;
+            width: 50%;
+            padding: 12px 4px !important;
             font-size: 12px !important;
-            font-weight: bold;
+            font-weight: 800;
+            text-align: center;
+            vertical-align: middle;
+            border-radius: 6px;
         }
     `;
-    document.head.appendChild(style);
 
-    // Envolver los elementos nativos existentes de la cabecera dentro del contenedor sticky si existen en el HTML
+    // Reorganizar el DOM para que la cabecera quede aislada y el resto scrolee abajo
     const headerElement = document.querySelector('.header-main');
-    if (headerElement) {
+    if (headerElement && !headerElement.parentNode.classList.contains('app-header-sticky-container')) {
         const parent = headerElement.parentNode;
         const wrapper = document.createElement('div');
         wrapper.className = 'app-header-sticky-container';
         
-        // Tomamos los elementos críticos de estado (Banner, Línea Amarilla, Estado de HW)
         const statusText = document.getElementById('status-text');
         const progressWrapper = document.getElementById('progress-wrapper');
         const hwGrid = document.querySelector('.hw-status-container') || document.querySelector('.grid'); 
@@ -176,9 +199,7 @@ function inyectarEstilosCabeceraInmovil() {
         wrapper.appendChild(headerElement);
         if (statusText) wrapper.appendChild(statusText);
         if (progressWrapper) wrapper.appendChild(progressWrapper);
-        if (hwGrid && (hwGrid.id === 'hw-bomba' || hwGrid.classList.contains('hw-status-container') || hwGrid.tagName === 'DIV')) {
-            wrapper.appendChild(hwGrid);
-        }
+        if (hwGrid) wrapper.appendChild(hwGrid);
     }
 }
 
@@ -244,35 +265,30 @@ function renderizarMonitorPrincipal() {
 
     const esBloqueadoPorTanque = sistemaEstado.startsWith('pausa_tanque') || sistemaEstado === 'llenado_puro';
 
-    // ==========================================
-    // REESTRUCTURACIÓN DE BOTONES SUPERIORES (Imagen 1)
-    // ==========================================
-    
-    // 1. Fila Triple: Configurar Riego, Forzar Llenado, Enviar a Flash
+    // Fila 1: Configuración, Sincronización y Forzado de Llenado en una sola fila real
     const filaTriple = document.createElement('div');
     filaTriple.className = "fila-botones-triple";
-    
     filaTriple.innerHTML = `
-        <button class="btn" style="background:#0288d1;" onclick="navegarHacia('config.html')">⚙️ Config Riego</button>
-        <button class="btn" style="background:#4caf50;" onclick="enviarConfiguracionFlashESP32()">💾 Sincro Flash</button>
-        <button class="btn" style="background:#7b1fa2;" onclick="ejecutarLlenadoSecuencial()">🚰 Forzar Llenado</button>
+        <button class="btn" style="background:#0288d1;" onclick="navegarHacia('config.html')">⚙️ Config</button>
+        <button class="btn" style="background:#4caf50;" onclick="enviarConfiguracionFlashESP32()">💾 Sincro</button>
+        <button class="btn" style="background:#7b1fa2;" onclick="ejecutarLlenadoSecuencial()">🚰 Llenar</button>
     `;
     container.appendChild(filaTriple);
 
-    // 2. Fila Dual: Botón de Emergencia y Simulador de Flotante lado a lado
+    // Fila 2: Botón de Emergencia y Simulador de Flotante lado a lado uniformes
     const filaDual = document.createElement('div');
     filaDual.className = "fila-botones-dual";
     
-    const textoBotonFlotante = tanqueLlamando ? '🟢 Tanque Lleno (Ok)' : '⚠️ Simular Falta Agua';
+    const textoBotonFlotante = tanqueLlamando ? '🟢 Tanque OK' : '⚠️ Simular Tanque';
     const colorBotonFlotante = tanqueLlamando ? 'var(--success)' : 'var(--warning)';
     
     filaDual.innerHTML = `
-        <button class="btn" style="background:var(--danger); color:white;" onclick="forzarParadaTotal()">🚨 PARADA EMERGENCIA</button>
+        <button class="btn" style="background:var(--danger); color:white;" onclick="forzarParadaTotal()">🚨 EMERGENCIA</button>
         <button class="btn" id="btn-sim-flotante" style="background:${colorBotonFlotante}; color:var(--dark);" onclick="gestionarFlotanteSimulado()">${textoBotonFlotante}</button>
     `;
     container.appendChild(filaDual);
 
-    // 3. Grilla de Válvulas
+    // Grilla Manual Directa
     const titleManual = document.createElement('div');
     titleManual.className = "manual-section-title";
     titleManual.innerText = "Zonas Físicas del Colector (Prueba Manual Directa)";
@@ -294,7 +310,7 @@ function renderizarMonitorPrincipal() {
     });
     container.appendChild(gridZonas);
 
-    // 4. Slider Ajuste Manual
+    // Slider de tiempo manual
     const cardManualSlider = document.createElement('div');
     cardManualSlider.className = "zone-card";
     cardManualSlider.style.marginTop = "12px";
@@ -310,7 +326,7 @@ function renderizarMonitorPrincipal() {
     `;
     container.appendChild(cardManualSlider);
 
-    // 5. Programas Automáticos con Factor TLC
+    // Programas Automáticos con Factor TLC
     const titleProgs = document.createElement('div');
     titleProgs.className = "manual-section-title";
     titleProgs.innerText = `Programas Automáticos (Ajuste Estacional TLC: ${ajusteEstacionalTLC}%)`;
@@ -353,7 +369,6 @@ function renderizarPantallaConfiguracion() {
         card.style.marginBottom = "15px";
 
         let stringDias = prog.dias.map(d => diasSemana[d]).join(' - ');
-        
         let totalNominal = prog.zonas.reduce((acc, z) => acc + z.min, 0);
         let totalEscalado = prog.zonas.reduce((acc, z) => acc + Math.max(1, Math.round(z.min * (ajusteEstacionalTLC / 100))), 0);
 
@@ -532,7 +547,6 @@ function lanzarProgramaDesdeMonitor(idProg) {
     if(!prog || prog.zonas.length === 0) { alert("Este programa no tiene zonas asignadas."); return; }
 
     sistemaEstado = 'riego_auto';
-    
     listaZonasPrioridad = prog.zonas.map(z => {
         return {
             id: z.id,
@@ -593,7 +607,6 @@ function arrancarBucleTiempoGenerico(esAutomatico) {
                 hwBomba.className = 'hw-badge';
                 hwBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: OFF</span>`;
             }
-            
             if (esAutomatico) avanzarCicloAutomaticoMulti();
             else forzarParadaTotal();
         }
@@ -608,7 +621,7 @@ function gestionarFlotanteSimulado() {
 function ejecutarLlenadoSecuencial() {
     tanqueLlamando = true;
     document.getElementById('hw-flotante').className = 'hw-badge alert';
-    document.getElementById('hw-flotante').innerHTML = `${ICONO_FLOTANTE_BOYA} <span>FLOTANTE: ¡DEMANDA AGUA! ⚠️</span>`;
+    document.getElementById('hw-flotante').innerHTML = `${ICONO_FLOTANTE_BOYA} <span>FLOTANTE: ¡DEMANDA AGWA! ⚠️</span>`;
     
     const estadoPrevio = sistemaEstado;
     const hwBomba = document.getElementById('hw-bomba');
