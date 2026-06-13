@@ -22,20 +22,30 @@
                 <svg viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4Z"/></svg>
                 <span>Parámetros de Seguridad General</span>
             </div>
-            <div class="zone-card" style="margin-bottom: 25px; border: 1px solid var(--warning);">
+            
+            <div class="zone-card" style="margin-bottom: 15px; border: 1px solid var(--warning);">
                 <div class="zone-name" style="color: var(--warning);">Time-out Llenado de Tanque</div>
                 <div class="timer-control">
                     <span>Límite Max:</span>
-                    <!-- FIX 3: Evento oninput mapeado para pisar la variable global al instante -->
                     <input type="range" min="0" max="8" value="1" id="input-timeout-tanque" oninput="actualizarDisplayTimeout(this.value)">
                     <span class="time-display" id="display-timeout-tanque">1m</span>
+                </div>
+            </div>
+
+            <div class="zone-card" style="margin-bottom: 25px; border: 1px solid var(--primary);">
+                <div class="zone-name" style="color: var(--primary);">🌧️ Ajuste Estacional Global TLC</div>
+                <div style="font-size:11px; color:#666; margin-bottom:8px;">Escala proporcionalmente el tiempo de todos los cronogramas automáticos según la estación.</div>
+                <div class="timer-control">
+                    <span>Escala:</span>
+                    <input type="range" min="10" max="150" step="5" value="100" id="input-tlc-estacional" oninput="actualizarDisplayTLC(this.value)">
+                    <span class="time-display" id="display-tlc-estacional" style="color:var(--primary); font-weight:bold; font-size:16px;">100%</span>
                 </div>
             </div>
 
             <div class="config-section-title" style="justify-content:space-between; display:flex; align-items:center;">
                 <div style="display:flex; align-items:center; gap:8px;">
                     <svg viewBox="0 0 24 24"><path d="M4,6H20V18H4M4,4A2,2 0 0,0 2,12V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6A2,2 0 0,0 20,4H4Z"/></svg>
-                    <span>Cronogramas de Riego</span>
+                    <span>Cronogramas de Riego Nominal</span>
                 </div>
                 <button class="btn" style="width:auto; padding:6px 15px; font-size:12px; background:var(--success);" onclick="abrirEditorPrograma(null)">➕ Crear Programa</button>
             </div>
@@ -43,7 +53,7 @@
             <div id="programas-master-container"></div>
 
             <button class="btn btn-save" onclick="enviarConfiguracionFlashESP32()">
-                <svg viewBox="0 0 24 24"><path d="M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z"/></svg> Sincronizar Todo con ESP32
+                <svg viewBox="0 0 24 24"><path d="M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z"/></svg> Sincronizar Configuración TLC
             </button>
         </div>
 
@@ -62,12 +72,12 @@
                 </div>
 
                 <div style="margin-bottom:15px;">
-                    <label style="font-weight:bold; font-size:14px;">Días del Calendario (Fijar frecuencia):</label>
+                    <label style="font-weight:bold; font-size:14px;">Días del Calendario:</label>
                     <div class="days-selector" id="modal-days-selector" style="margin-top:5px;"></div>
                 </div>
 
                 <div style="margin-bottom:20px;">
-                    <label style="font-weight:bold; font-size:14px;">Asignación de Zonas y Tiempos de Carrera:</label>
+                    <label style="font-weight:bold; font-size:14px;">Asignación de Zonas y Tiempos Base:</label>
                     <div id="modal-zones-assignment" style="margin-top:10px; max-height:220px; overflow-y:auto; padding-right:5px;"></div>
                 </div>
 
