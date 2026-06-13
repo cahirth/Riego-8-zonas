@@ -1,10 +1,10 @@
 // ============================================================================
 // FIRMWARE FRONTEND: Riego Hidráulico TLC
-// VERSION: v2.5.0 (Build: 20260613-2350)
-// DESCRIPCIÓN: Íconos XL + Reubicación de Slider Manual + Ajuste Estacional Pro TLC (Chau H***er)
+// VERSION: v2.6.0 (Build: 20260613-2000)
+// DESCRIPCIÓN: Sincronización Estacional Dinámica + Iconos de Hardware de Alta Fidelidad + Limpieza Remanentes
 // ============================================================================
 
-const CONFIG_VERSION = "v2.5.0 (Build: 20260613-2350)";
+const CONFIG_VERSION = "v2.6.0 (Build: 20260613-2000)";
 
 window.cicloInterval = null;
 window.tanqueInterval = null;
@@ -12,7 +12,7 @@ window.tanqueInterval = null;
 const diasSemana = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 const nombresDiasLargos = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-// --- ICONOGRAFÍA VECTORIAL INDUSTRIAL XL (CALCADA DE COMPONENTES REALES) ---
+// --- ICONOGRAFÍA VECTORIAL INDUSTRIAL XL ---
 const ICONO_ASPERSOR_JPG = `<svg viewBox="0 0 100 100" style="width:36px; height:36px; margin-bottom:6px; color:inherit;">
     <path fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" d="M50 90V55M35 55h30v8H35z"/>
     <rect x="46" y="38" width="8" height="17" fill="currentColor"/>
@@ -25,12 +25,21 @@ const ICONO_BOMBA_JPG = `<svg viewBox="0 0 100 100" style="width:28px; height:28
     <path fill="currentColor" d="M35 33h45v44H35zM50 20h16v13H50zM18 55h17v6H18zM70 42h10v4H70zm0 10h10v4H70zm0 10h10v4H70z"/>
 </svg>`;
 
-const ICONO_FLOTANTE_JPG = `<svg viewBox="0 0 100 100" style="width:28px; height:28px; vertical-align:middle; margin-right:8px;">
-    <path fill="none" stroke="currentColor" stroke-width="4" d="M75 10v40"/>
-    <rect x="70" y="50" width="10" height="12" fill="currentColor"/>
-    <rect x="30" y="32" width="28" height="16" rx="6" fill="none" stroke="currentColor" stroke-width="4" transform="rotate(-25 44 40)"/>
-    <rect x="42" y="62" width="28" height="16" rx="6" fill="none" stroke="currentColor" stroke-width="4" transform="rotate(25 56 70)"/>
-    <path fill="none" stroke="currentColor" stroke-width="3" d="M72 56c-10 0-18-10-26-14m26 2c-8 0-14 6-20 10"/>
+// NUEVO: Icono de Válvula Solenoide de Alta Fidelidad Hidráulica
+const ICONO_VALVULA_SOLENOIDE = `<svg viewBox="0 0 100 100" style="width:28px; height:28px; vertical-align:middle; margin-right:8px;">
+    <rect x="38" y="10" width="24" height="26" rx="3" fill="currentColor"/>
+    <rect x="46" y="36" width="8" height="10" fill="currentColor"/>
+    <path fill="currentColor" d="M15 50l30 18V32zM85 50L55 32v36z"/>
+    <path d="M20 74h60v6H20z" fill="currentColor"/>
+    <path d="M42 56h16v6H42z" fill="none" stroke="#fff" stroke-width="2"/>
+</svg>`;
+
+// NUEVO: Icono de Flotante Mecánico de Boya para Tanque
+const ICONO_FLOTANTE_BOYA = `<svg viewBox="0 0 100 100" style="width:28px; height:28px; vertical-align:middle; margin-right:8px;">
+    <path d="M15 25h12v10H15z" fill="currentColor"/>
+    <path fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" d="M27 30l38 18"/>
+    <circle cx="73" cy="52" r="14" fill="none" stroke="currentColor" stroke-width="4"/>
+    <path d="M50 75c0-10 40-10 40 0z" fill="#2196F3" opacity="0.7"/>
 </svg>`;
 
 let zonasMaestras = [];
@@ -57,7 +66,7 @@ let ajusteEstacionalTLC = 100;
 
 function trazarVersionCompilacion() {
     console.log(
-        `%c 💧 TLC SYSTEM MULTIPROGRAMA CUSTOM — Version: ${CONFIG_VERSION} `,
+        `%c 💧 TLC SYSTEM — Version: ${CONFIG_VERSION} `,
         "background: #0d47a1; color: #ffffff; font-weight: bold; padding: 4px; border-radius: 4px;"
     );
 }
@@ -103,8 +112,11 @@ function local_recuperarEstadoGoblal() {
 function inyectarIconosEstaticosHardware() {
     const lblBomba = document.getElementById('hw-bomba');
     const lblValvula = document.getElementById('hw-tanque');
+    const lblFlotante = document.getElementById('hw-flotante');
+    
     if(lblBomba) lblBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: OFF</span>`;
-    if(lblValvula) lblValvula.innerHTML = `${ICONO_FLOTANTE_JPG} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
+    if(lblValvula) lblValvula.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
+    if(lblFlotante) lblFlotante.innerHTML = `${ICONO_FLOTANTE_BOYA} <span>FLOTANTE: TANQUE OK</span>`;
 }
 
 function actualizarDisplayTimeout(valor) {
@@ -114,11 +126,18 @@ function actualizarDisplayTimeout(valor) {
     local_guardarEstadoGlobal();
 }
 
+// NUEVO: Actualiza display y refresca la lista de programas en pantalla al instante
 function actualizarDisplayTLC(valor) {
     ajusteEstacionalTLC = parseInt(valor);
     const display = document.getElementById('display-tlc-estacional');
     if(display) display.innerText = valor + "%";
     local_guardarEstadoGlobal();
+    
+    // Refresco dinámico para actualizar los cálculos en pantalla inmediatamente
+    let path = window.location.pathname;
+    if(path.includes("config.html")) {
+        renderizarPantallaConfiguracion();
+    }
 }
 
 function actualizarDisplayTiempoManualGlobal(valor) {
@@ -131,9 +150,13 @@ function actualizarDisplayTiempoManualGlobal(valor) {
 function actualizarFechaHoy() {
     const ahora = new Date();
     const hoyIdx = ahora.getDay();
-    const fechaString = ahora.toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
+    const fechaString = SecuritySafeStringDate(ahora);
     const labelFecha = document.getElementById('display-fecha-hoy');
     if(labelFecha) labelFecha.innerText = `Hoy: ${nombresDiasLargos[hoyIdx]} ${fechaString}`;
+}
+
+function SecuritySafeStringDate(objFecha) {
+    return objFecha.toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
 }
 
 function navegarHacia(destino) {
@@ -154,7 +177,7 @@ function renderizarMonitorPrincipal() {
 
     const esBloqueadoPorTanque = sistemaEstado.startsWith('pausa_tanque') || sistemaEstado === 'llenado_puro';
 
-    // 1. Grilla de Válvulas 1..8
+    // 1. Título de la Grilla de Válvulas
     const titleManual = document.createElement('div');
     titleManual.className = "manual-section-title";
     titleManual.innerText = "Zonas Físicas del Colector (Prueba Manual Directa)";
@@ -176,7 +199,7 @@ function renderizarMonitorPrincipal() {
     });
     container.appendChild(gridZonas);
 
-    // 2. INYECCIÓN DEL SLIDER MANUAL REUBICADO JUSTO DEBAJO DE LAS VÁLVULAS
+    // 2. Slider Ajuste Manual (Justo abajo de las válvulas 1..8)
     const cardManualSlider = document.createElement('div');
     cardManualSlider.className = "zone-card";
     cardManualSlider.style.marginTop = "12px";
@@ -222,6 +245,8 @@ function renderizarMonitorPrincipal() {
         `;
         container.appendChild(card);
     });
+    
+    // NOTA: Se eliminó el bloque duplicado que se inyectaba al final de la pantalla.
 }
 
 function renderizarPantallaConfiguracion() {
@@ -400,7 +425,7 @@ function toggleZonaManualDirecta(zonaId) {
     tiempoInicialAsignado = tiempoManualGlobalConfigurado; 
 
     document.getElementById('hw-tanque').className = 'hw-badge closed';
-    document.getElementById('hw-tanque').innerHTML = `${ICONO_FLOTANTE_JPG} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
+    document.getElementById('hw-tanque').innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
     document.getElementById('hw-bomba').className = 'hw-badge on';
     document.getElementById('hw-bomba').innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: RUNNING ⚡</span>`;
 
@@ -432,7 +457,7 @@ function avanzarCicloAutomaticoMulti() {
         tiempoInicialAsignado = proximaZona.min;
 
         document.getElementById('hw-tanque').className = 'hw-badge closed';
-        document.getElementById('hw-tanque').innerHTML = `${ICONO_FLOTANTE_JPG} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
+        document.getElementById('hw-tanque').innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
         document.getElementById('hw-bomba').className = 'hw-badge on';
         document.getElementById('hw-bomba').innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: RUNNING ⚡</span>`;
 
@@ -490,7 +515,7 @@ function gestionarFlotanteSimulado() {
 function ejecutarLlenadoSecuencial() {
     tanqueLlamando = true;
     document.getElementById('hw-flotante').className = 'hw-badge alert';
-    document.getElementById('hw-flotante').innerText = 'FLOTANTE: ¡DEMANDA AGUA! ⚠️';
+    document.getElementById('hw-flotante').innerHTML = `${ICONO_FLOTANTE_BOYA} <span>FLOTANTE: ¡DEMANDA AGUA! ⚠️</span>`;
     
     const btnSim = document.getElementById('btn-sim-flotante');
     if(btnSim) {
@@ -513,7 +538,7 @@ function ejecutarLlenadoSecuencial() {
         setTimeout(() => {
             if(hwTanque) {
                 hwTanque.className = 'hw-badge';
-                hwTanque.innerHTML = `${ICONO_FLOTANTE_JPG} <span>VALV. TANQUE: ABIERTA</span>`;
+                hwTanque.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>VALV. TANQUE: ABIERTA</span>`;
             }
             document.getElementById('status-text').className = 'status-current paused';
             document.getElementById('status-text').innerText = `⏳ ESPERANDO BOMBA (500ms)`;
@@ -534,7 +559,7 @@ function ejecutarLlenadoSecuencial() {
         renderizarBotonesManualesEmulados();
         if(hwTanque) {
             hwTanque.className = 'hw-badge';
-            hwTanque.innerHTML = `${ICONO_FLOTANTE_JPG} <span>VALV. TANQUE: ABIERTA</span>`;
+            hwTanque.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>VALV. TANQUE: ABIERTA</span>`;
         }
         setTimeout(() => {
             if (tanqueLlamando) {
@@ -582,6 +607,7 @@ function detenerLlenadoSecuencial(porTimeout) {
     if(window.tanqueInterval) clearInterval(window.tanqueInterval);
     const hwBomba = document.getElementById('hw-bomba');
     const hwTanque = document.getElementById('hw-tanque');
+    const hwFlotante = document.getElementById('hw-flotante');
 
     if(hwBomba) {
         hwBomba.className = 'hw-badge';
@@ -591,7 +617,11 @@ function detenerLlenadoSecuencial(porTimeout) {
     setTimeout(() => {
         if(hwTanque) {
             hwTanque.className = 'hw-badge closed';
-            hwTanque.innerHTML = `${ICONO_FLOTANTE_JPG} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
+            hwTanque.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
+        }
+        if(hwFlotante) {
+            hwFlotante.className = 'hw-badge';
+            hwFlotante.innerHTML = `${ICONO_FLOTANTE_BOYA} <span>FLOTANTE: TANQUE OK</span>`;
         }
 
         tanqueLlamando = false;
@@ -641,11 +671,11 @@ function forzarParadaTotal() {
         }
         if(hwTanque) {
             hwTanque.className = 'hw-badge closed';
-            hwTanque.innerHTML = `${ICONO_FLOTANTE_JPG} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
+            hwTanque.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
         }
         if(hwFlotante) {
             hwFlotante.className = 'hw-badge';
-            hwFlotante.innerHTML = `<span>FLOTANTE: TANQUE OK</span>`;
+            hwFlotante.innerHTML = `${ICONO_FLOTANTE_BOYA} <span>FLOTANTE: TANQUE OK</span>`;
         }
     }
     
@@ -677,7 +707,7 @@ function enviarConfiguracionFlashESP32() {
         ajuste_estacional_tlc: ajusteEstacionalTLC,
         programas: programas
     };
-    console.log("JSON Maestro enviado hacia el LittleFS del ESP32:", JSON.stringify(payload, null, 2));
+    console.log("JSON Maestro enviado:", JSON.stringify(payload, null, 2));
     alert("🚀 ¡Ajuste Estacional TLC y programas sincronizados con el ESP32!");
     navegarHacia("monitor.html");
 }
