@@ -1,3 +1,11 @@
+// ============================================================================
+// FIRMWARE FRONTEND: Riego Hidráulico TLC
+// VERSION: v1.2.1 (Build: 20260613-1745)
+// DESCRIPCIÓN: Corrección estricta de sintaxis JS (Remoción de Void heredado)
+// ============================================================================
+
+const CONFIG_VERSION = "v1.2.1 (Build: 20260613-1745)";
+
 const diasSemana = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 const nombresDiasLargos = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
@@ -19,6 +27,13 @@ for (let i = 1; i <= 8; i++) {
     zonas.push({ id: i, nombre: `Zona Riego ${i}`, minutos: 5, dias: [1, 3, 5] });
 }
 
+function trazarVersionCompilacion() {
+    console.log(
+        `%c 💧 TLC RIEGO HIDRÁULICO — Running Version: ${CONFIG_VERSION} `,
+        "background: #4CAF50; color: #ffffff; font-weight: bold; padding: 4px; border-radius: 4px;"
+    );
+}
+
 function local_guardarEstadoGlobal() {
     const backup = {
         zonas: zonas,
@@ -29,6 +44,7 @@ function local_guardarEstadoGlobal() {
 }
 
 function local_recuperarEstadoGoblal() {
+    trazarVersionCompilacion();
     const datosGuardados = localStorage.getItem('TLC_RIEGO_DATA');
     if (datosGuardados) {
         const cache = JSON.parse(datosGuardados);
@@ -260,4 +276,159 @@ function arrancarBucleTiempo(esAutomatico) {
     cicloInterval = setInterval(() => {
         if (tiempoRestanteActual > 0) {
             document.getElementById('timer-remaining').innerText = `Tiempo restante: ${tiempoRestanteActual} min`;
-            let pct = ((zonaConfig.minutos - tiempoRestante
+            let pct = ((zonaConfig.minutos - tiempoRestanteActual) / zonaConfig.minutos) * 100;
+            document.getElementById('cycle-progress').style.width = `${pct}%`;
+            tiempoRestanteActual--;
+        } else {
+            clearInterval(cicloInterval);
+            document.getElementById('hw-bomba').className = 'hw-badge';
+            document.getElementById('hw-bomba').innerText = 'BOMBA: OFF';
+            if (esAutomatico) avanzarCicloAutomatico();
+            else forzarParadaTotal();
+        }
+    }, 1000); 
+}
+
+function navegarA(destino) {
+    let rutaActual = window.location.pathname;
+    if (rutaActual.includes("config.html") && destino === "monitor.html") {
+        window.location.href = rutaActual.replace("config.html", "monitor.html");
+    } else if (rutaActual.includes("monitor.html") && destino === "config.html") {
+        window.location.href = rutaActual.replace("monitor.html", "config.html");
+    } else {
+        window.location.href = destino;
+    }
+}
+
+function ejecutarCicloAutomatico() {
+    if (sistemaEstado.startsWith('pausa_tanque') || sistemaEstado === 'llenado_puro') return;
+    forzarParadaTotal();
+    sistemaEstado = 'riego_auto';
+    listaZonasPrioridad = zonas.filter(z => z.minutos > 0).map(z => z.id);
+    if(listaZonasPrioridad.length === 0) { sistemaEstado = 'idle'; return; }
+    avanzarCicloAutomatico();
+}
+
+function avanzarCicloAutomatico() {
+    if (listaZonasPrioridad.length > 0) {
+        zonaActivaId = listaZonasPrioridad.shift();
+        tiempoRestanteActual = zonas.find(z => z.id === zonaActivaId).minutos;
+        document.getElementById('hw-tanque').className = 'hw-badge closed';
+        document.getElementById('hw-tanque').innerText = 'VALV. TANQUE: CERRADA (NC) 🔴';
+        document.getElementById('hw-bomba').className = 'hw-badge on';
+        document.getElementById('hw-bomba').innerText = 'BOMBA: RUNNING ⚡';
+        arrancarBucleTiempo(true);
+        renderizarBotonesManuales();
+    } else {
+        forzarParadaTotal();
+        setTimeout(() => { alert("✅ Ciclo de riego completo finalizado."); }, 200);
+    }
+}
+
+function forzarParadaTotal() {
+    if(cicloInterval) clearInterval(cicloInterval);
+    if(tanqueInterval) clearInterval(tanqueInterval);
+    
+    sistemaEstado = 'idle';
+    zonaActivaId = null;
+    tiempoRestanteActual = 0;
+    listaZonasPrioridad = [];
+    tanqueLlamando = false;
+
+    const lblText = document.getElementById('status-text');
+    const lblTime = document.getElementById('timer-remaining');
+    const wrapper = document.getElementById('progress-wrapper');
+    const progress = document.getElementById('cycle-progress');
+
+    if(lblText) {
+        lblText.className = 'status-current';
+        lblText.innerText = '🏠 EN ESPERA (STANDBY)';
+        if(lblTime) lblTime.innerText = '';
+        if(wrapper) wrapper.style.display = 'none';
+        if(progress) {
+            progress.style.width = '0%';
+            progress.className = 'progress-bar';
+        }
+        
+        document.getElementById('hw-bomba').className = 'hw-badge';
+        document.getElementById('hw-bomba').innerText = 'BOMBA: OFF';
+        document.getElementById('hw-tanque').className = 'hw-badge closed';
+        document.getElementById('hw-tanque').innerText = 'VALV. TANQUE: CERRADA (NC) 🔴';
+        document.getElementById('hw-flotante').className = 'hw-badge';
+        document.getElementById('hw-flotante').innerText = 'FLOTANTE: TANQUE OK';
+    }
+
+    actualizarFechaHoy();
+    renderizarBotonesManuales();
+}
+
+function actualizarDisplayTimeout(valor) {
+    timeoutTanqueConfigurado = parseInt(valor);
+    document.getElementById('display-timeout-tanque').innerText = valor === '0' ? 'Manual' : valor + 'm';
+}
+
+function actualizarStartTime(valor) {
+    startTimeConfigurado = valor;
+}
+
+function renderizarConfiguracion() {
+    document.getElementById('input-timeout-tanque').value = timeoutTanqueConfigurado;
+    document.getElementById('display-timeout-tanque').innerText = timeoutTanqueConfigurado === 0 ? 'Manual' : timeoutTanqueConfigurado + 'm';
+    document.getElementById('input-start-time').value = startTimeConfigurado;
+
+    const container = document.getElementById('zones-master');
+    if(!container) return;
+    container.innerHTML = '';
+    
+    const hoyIdx = new Date().getDay();
+
+    zonas.forEach((zona, index) => {
+        const card = document.createElement('div');
+        card.className = 'zone-card';
+        card.innerHTML = `
+            <div class="zone-title-card">
+                <svg viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4Z"/></svg>
+                <span>${zona.nombre}</span>
+            </div>
+            <div class="timer-control">
+                <span>Minutos:</span>
+                <input type="range" min="0" max="60" value="${zona.minutos}" oninput="cambiarMinutos(${index}, this.value)">
+                <span class="time-display" id="display-min-${index}">${zona.minutos}m</span>
+            </div>
+            <div class="days-selector">
+                ${diasSemana.map((dia, dIdx) => `
+                    <div class="day-btn ${zona.dias.includes(dIdx) ? 'selected' : ''} ${dIdx === hoyIdx ? 'today' : ''}" 
+                         onclick="toggleDia(${index}, ${dIdx})">${dia}</div>
+                `).join('')}
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+function cambiarMinutos(index, valor) {
+    zonas[index].minutos = parseInt(valor);
+    document.getElementById(`display-min-${index}`).innerText = valor + 'm';
+}
+
+function toggleDia(zIdx, dIdx) {
+    const arr = zonas[zIdx].dias;
+    const posicion = arr.indexOf(dIdx);
+    if(posicion > -1) arr.splice(posicion, 1);
+    else arr.push(dIdx);
+    renderizarConfiguracion();
+}
+
+function guardarConfiguracion() {
+    local_guardarEstadoGlobal(); 
+    const payload = {
+        comando: "guardar_config",
+        version_frontend: CONFIG_VERSION,
+        start_time: startTimeConfigurado, 
+        timeout_tanque: timeoutTanqueConfigurado,
+        zonas: zonas.map(z => ({id: z.id, min: z.minutos, dias: z.dias}))
+    };
+    console.log("JSON enviado:", JSON.stringify(payload, null, 2));
+    alert("⚙️ Ajustes guardados.");
+    navegarA("monitor.html"); 
+}
