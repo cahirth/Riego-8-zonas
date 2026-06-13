@@ -26,6 +26,7 @@
                 <div class="zone-name" style="color: var(--warning);">Time-out Llenado de Tanque</div>
                 <div class="timer-control">
                     <span>Límite Max:</span>
+                    <!-- FIX 3: Evento oninput mapeado para pisar la variable global al instante -->
                     <input type="range" min="0" max="8" value="1" id="input-timeout-tanque" oninput="actualizarDisplayTimeout(this.value)">
                     <span class="time-display" id="display-timeout-tanque">1m</span>
                 </div>
