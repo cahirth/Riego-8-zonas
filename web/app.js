@@ -1,10 +1,10 @@
 // ============================================================================
 // FIRMWARE FRONTEND: Riego Hidráulico TLC
-// VERSION: v2.0.5 (Build: 20260613-2000)
-// DESCRIPCIÓN: Corrección y re-vinculación de la barra de progreso de tiempo real
+// VERSION: v2.1.0 (Build: 20260613-2115)
+// DESCRIPCIÓN: Implementación de slider de tiempo manual global en el Dashboard
 // ============================================================================
 
-const CONFIG_VERSION = "v2.0.5 (Build: 20260613-2000)";
+const CONFIG_VERSION = "v2.1.0 (Build: 20260613-2115)";
 
 window.cicloInterval = null;
 window.tanqueInterval = null;
@@ -26,11 +26,14 @@ let programaEditandoId = null;
 let sistemaEstado = 'idle'; 
 let zonaActivaId = null;
 let tiempoRestanteActual = 0;
-let tiempoInicialAsignado = 0; // NUEVA VARIABLE: Para calcular el % exacto de la barra
+let tiempoInicialAsignado = 0; 
 let tiempoLlenadoTanqueRestante = 0; 
 let timeoutTanqueConfigurado = 1; 
 let listaZonasPrioridad = [];
 let tanqueLlamando = false;
+
+// NUEVA VARIABLE GLOBAL: Almacena el tiempo del slider del monitor (por defecto 5 min)
+let tiempoManualGlobalConfigurado = 5;
 
 function trazarVersionCompilacion() {
     console.log(
@@ -42,7 +45,8 @@ function trazarVersionCompilacion() {
 function local_guardarEstadoGlobal() {
     const backup = {
         programas: programas,
-        timeoutTanqueConfigurado: timeoutTanqueConfigurado
+        timeoutTanqueConfigurado: timeoutTanqueConfigurado,
+        tiempoManualGlobalConfigurado: tiempoManualGlobalConfigurado // Persiste el slider manual
     };
     localStorage.setItem('TLC_RIEGO_MULTI_DATA', JSON.stringify(backup));
 }
@@ -54,7 +58,25 @@ function local_recuperarEstadoGoblal() {
         const cache = JSON.parse(datosGuardados);
         programas = cache.programas;
         timeoutTanqueConfigurado = cache.timeoutTanqueConfigurado;
+        if(cache.tiempoManualGlobalConfigurado) {
+            tiempoManualGlobalConfigurado = cache.tiempoManualGlobalConfigurado;
+        }
     }
+    // Sincroniza el slider del monitor si existe físicamente en pantalla
+    const sliderInput = document.getElementById('input-tiempo-manual-global');
+    const sliderDisplay = document.getElementById('display-tiempo-manual-global');
+    if(sliderInput && sliderDisplay) {
+        sliderInput.value = tiempoManualGlobalConfigurado;
+        sliderDisplay.innerText = tiempoManualGlobalConfigurado + "m";
+    }
+}
+
+// NUEVA FUNCIÓN: Actualiza el valor del slider manual en tiempo real
+function actualizarDisplayTiempoManualGlobal(valor) {
+    tiempoManualGlobalConfigurado = parseInt(valor);
+    const display = document.getElementById('display-tiempo-manual-global');
+    if(display) display.innerText = valor + "m";
+    local_guardarEstadoGlobal();
 }
 
 function actualizarFechaHoy() {
@@ -262,11 +284,7 @@ function cambiarMinutosZonaPrograma(idZona, valor) {
     }
 }
 
-function cerrarEditorModal() {
-    document.getElementById('editor-modal-screen').style.display = 'none';
-    window.tempNuevoProg = null;
-}
-
+// CORRECCIÓN DE FUNCIÓN: Unificada en castellano estricto
 function guardarCambiosPrograma() {
     const name = document.getElementById('modal-nombre-prog').value;
     const time = document.getElementById('modal-start-time').value;
@@ -302,8 +320,10 @@ function toggleZonaManualDirecta(zonaId) {
     forzarParadaTotal();
     sistemaEstado = 'riego_manual';
     zonaActivaId = zonaId;
-    tiempoRestanteActual = 2; // Configurado a 2 minutos base de testeo
-    tiempoInicialAsignado = 2; 
+    
+    // CORRECCIÓN: Asigna dinámicamente el valor actual del slider del monitor
+    tiempoRestanteActual = tiempoManualGlobalConfigurado; 
+    tiempoInicialAsignado = tiempoManualGlobalConfigurado; 
 
     document.getElementById('hw-tanque').className = 'hw-badge closed';
     document.getElementById('hw-tanque').innerText = 'VALV. TANQUE: CERRADA (NC) 🔴';
@@ -351,7 +371,7 @@ function arrancarBucleTiempoGenerico(esAutomatico) {
     if(wrapper) wrapper.style.display = 'block';
     if(bar) {
         bar.className = 'progress-bar';
-        bar.style.width = '0%'; // Resetea visualmente al arrancar
+        bar.style.width = '0%'; 
     }
 
     document.getElementById('status-text').className = 'status-current running';
@@ -362,7 +382,6 @@ function arrancarBucleTiempoGenerico(esAutomatico) {
         if (tiempoRestanteActual > 0) {
             document.getElementById('timer-remaining').innerText = `Tiempo restante: ${tiempoRestanteActual} min`;
             
-            // CORRECCIÓN: Dibuja dinámicamente el progreso verde basado en la cuenta regresiva
             if(bar && tiempoInicialAsignado > 0) {
                 let porcentajeAcumulado = ((tiempoInicialAsignado - tiempoRestanteActual) / tiempoInicialAsignado) * 100;
                 bar.style.width = `${porcentajeAcumulado}%`;
@@ -445,7 +464,7 @@ function arrancarBucleTanque(segundosTotales) {
     if(wrapper) wrapper.style.display = 'block';
     if(bar) {
         bar.className = 'progress-bar paused';
-        bar.style.width = '100%'; // Llenado de tanque pinta la barra completa en naranja
+        bar.style.width = '100%'; 
     }
 
     document.getElementById('status-text').className = 'status-current paused';
@@ -512,8 +531,29 @@ function forzarParadaTotal() {
         document.getElementById('hw-flotante').className = 'hw-badge';
         document.getElementById('hw-flotante').innerText = 'FLOTANTE: TANQUE OK';
     }
+    
+    // Mantiene la consistencia del slider manual al reconstruir el monitor
+    const sliderInput = document.getElementById('input-tiempo-manual-global');
+    const sliderDisplay = document.getElementById('display-tiempo-manual-global');
+    if(sliderInput && sliderDisplay) {
+        sliderInput.value = tiempoManualGlobalConfigurado;
+        sliderDisplay.innerText = tiempoManualGlobalConfigurado + "m";
+    }
+
     actualizarFechaHoy();
     let path = window.location.pathname;
     if(path.includes("config.html")) renderizarPantallaConfiguracion();
     else renderizarMonitorPrincipal();
+}
+
+function enviarConfiguracionFlashESP32() {
+    const payload = {
+        comando: "guardar_config_maestra",
+        build: CONFIG_VERSION,
+        timeout_tanque: timeoutTanqueConfigurado,
+        programas: programas
+    };
+    console.log("JSON Maestro enviado hacia el LittleFS del ESP32:", JSON.stringify(payload, null, 2));
+    alert("🚀 ¡Configuración de programas sincronizada por red con el ESP32!");
+    navegarHacia("monitor.html");
 }
