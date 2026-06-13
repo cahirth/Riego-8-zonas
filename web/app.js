@@ -1,10 +1,10 @@
 // ============================================================================
 // FIRMWARE FRONTEND: Riego Hidráulico TLC
-// VERSION: v2.6.1 (Build: 20260613-2015)
-// DESCRIPCIÓN: Corrección de duplicados en Monitor (Limpieza total de remanentes)
+// VERSION: v2.6.2 (Build: 20260613-2045)
+// DESCRIPCIÓN: Cabecera Fija (Sticky) + Botones distribuidos en Filas Únicas
 // ============================================================================
 
-const CONFIG_VERSION = "v2.6.1 (Build: 20260613-2015)";
+const CONFIG_VERSION = "v2.6.2 (Build: 20260613-2045)";
 
 window.cicloInterval = null;
 window.tanqueInterval = null;
@@ -105,6 +105,81 @@ function local_recuperarEstadoGoblal() {
     }
     
     inyectarIconosEstaticosHardware();
+    inyectarEstilosCabeceraInmovil();
+}
+
+// Inyección dinámica de CSS para bloquear la pantalla superior (Imagen 2 - Línea Amarilla fija)
+function inyectarEstilosCabeceraInmovil() {
+    const ID_ESTILOS_TLC = "estilos-cabecera-fija-tlc";
+    if (document.getElementById(ID_ESTILOS_TLC)) return;
+
+    const style = document.createElement('style');
+    style.id = ID_ESTILOS_TLC;
+    style.innerHTML = `
+        /* Inmoviliza el contenedor superior completo */
+        .app-header-sticky-container {
+            position: -webkit-sticky;
+            position: sticky;
+            top: 0;
+            z-index: 999;
+            background: #ffffff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            margin-bottom: 12px;
+        }
+        /* Ajustes de márgenes internos para optimizar espacio */
+        .header-main { margin-bottom: 0 !important; border-radius: 0 !important; }
+        .status-current { margin: 0 !important; border-radius: 0 !important; }
+        .hw-status-container { margin-bottom: 0 !important; padding: 8px 10px !important; border-radius: 0 !important; }
+        
+        /* Contenedores Flex en una sola fila para botones (Imagen 1) */
+        .fila-botones-triple {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 8px;
+            width: 100%;
+        }
+        .fila-botones-triple .btn {
+            flex: 1;
+            padding: 10px 4px !important;
+            font-size: 11px !important;
+            white-space: nowrap;
+            text-align: center;
+        }
+        .fila-botones-dual {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+            width: 100%;
+        }
+        .fila-botones-dual .btn {
+            flex: 1;
+            padding: 12px 6px !important;
+            font-size: 12px !important;
+            font-weight: bold;
+        }
+    `;
+    document.head.appendChild(style);
+
+    // Envolver los elementos nativos existentes de la cabecera dentro del contenedor sticky si existen en el HTML
+    const headerElement = document.querySelector('.header-main');
+    if (headerElement) {
+        const parent = headerElement.parentNode;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'app-header-sticky-container';
+        
+        // Tomamos los elementos críticos de estado (Banner, Línea Amarilla, Estado de HW)
+        const statusText = document.getElementById('status-text');
+        const progressWrapper = document.getElementById('progress-wrapper');
+        const hwGrid = document.querySelector('.hw-status-container') || document.querySelector('.grid'); 
+
+        parent.insertBefore(wrapper, headerElement);
+        wrapper.appendChild(headerElement);
+        if (statusText) wrapper.appendChild(statusText);
+        if (progressWrapper) wrapper.appendChild(progressWrapper);
+        if (hwGrid && (hwGrid.id === 'hw-bomba' || hwGrid.classList.contains('hw-status-container') || hwGrid.tagName === 'DIV')) {
+            wrapper.appendChild(hwGrid);
+        }
+    }
 }
 
 function inyectarIconosEstaticosHardware() {
@@ -169,7 +244,35 @@ function renderizarMonitorPrincipal() {
 
     const esBloqueadoPorTanque = sistemaEstado.startsWith('pausa_tanque') || sistemaEstado === 'llenado_puro';
 
-    // 1. Grilla de Válvulas
+    // ==========================================
+    // REESTRUCTURACIÓN DE BOTONES SUPERIORES (Imagen 1)
+    // ==========================================
+    
+    // 1. Fila Triple: Configurar Riego, Forzar Llenado, Enviar a Flash
+    const filaTriple = document.createElement('div');
+    filaTriple.className = "fila-botones-triple";
+    
+    filaTriple.innerHTML = `
+        <button class="btn" style="background:#0288d1;" onclick="navegarHacia('config.html')">⚙️ Config Riego</button>
+        <button class="btn" style="background:#4caf50;" onclick="enviarConfiguracionFlashESP32()">💾 Sincro Flash</button>
+        <button class="btn" style="background:#7b1fa2;" onclick="ejecutarLlenadoSecuencial()">🚰 Forzar Llenado</button>
+    `;
+    container.appendChild(filaTriple);
+
+    // 2. Fila Dual: Botón de Emergencia y Simulador de Flotante lado a lado
+    const filaDual = document.createElement('div');
+    filaDual.className = "fila-botones-dual";
+    
+    const textoBotonFlotante = tanqueLlamando ? '🟢 Tanque Lleno (Ok)' : '⚠️ Simular Falta Agua';
+    const colorBotonFlotante = tanqueLlamando ? 'var(--success)' : 'var(--warning)';
+    
+    filaDual.innerHTML = `
+        <button class="btn" style="background:var(--danger); color:white;" onclick="forzarParadaTotal()">🚨 PARADA EMERGENCIA</button>
+        <button class="btn" id="btn-sim-flotante" style="background:${colorBotonFlotante}; color:var(--dark);" onclick="gestionarFlotanteSimulado()">${textoBotonFlotante}</button>
+    `;
+    container.appendChild(filaDual);
+
+    // 3. Grilla de Válvulas
     const titleManual = document.createElement('div');
     titleManual.className = "manual-section-title";
     titleManual.innerText = "Zonas Físicas del Colector (Prueba Manual Directa)";
@@ -186,12 +289,12 @@ function renderizarMonitorPrincipal() {
         const btn = document.createElement('div');
         btn.className = `btn-manual ${extraClass}`;
         btn.onclick = () => { if(!esBloqueadoPorTanque) toggleZonaManualDirecta(zona.id); };
-        btn.innerHTML = `${ICONO_ASPERSOR_JPG} <span>${zona.nombre}</span>`;
+        btn.innerHTML = `${ICONO_ASPENSOR_JPG} <span>${zona.nombre}</span>`;
         gridZonas.appendChild(btn);
     });
     container.appendChild(gridZonas);
 
-    // 2. Slider Ajuste Manual (Único lugar oficial: justo abajo de la grilla)
+    // 4. Slider Ajuste Manual
     const cardManualSlider = document.createElement('div');
     cardManualSlider.className = "zone-card";
     cardManualSlider.style.marginTop = "12px";
@@ -207,7 +310,7 @@ function renderizarMonitorPrincipal() {
     `;
     container.appendChild(cardManualSlider);
 
-    // 3. Programas Automáticos con Factor TLC
+    // 5. Programas Automáticos con Factor TLC
     const titleProgs = document.createElement('div');
     titleProgs.className = "manual-section-title";
     titleProgs.innerText = `Programas Automáticos (Ajuste Estacional TLC: ${ajusteEstacionalTLC}%)`;
@@ -342,7 +445,7 @@ function toggleInclusionZonaFisica(idZona) {
     const chk = document.getElementById(`chk-zona-${idZona}`);
     const slide = document.getElementById(`slide-zona-${idZona}`);
     const lbl = document.getElementById(`lbl-min-prog-${idZona}`);
-    const prog = programmeEditandoId === "NUEVO" ? window.tempNuevoProg : programas.find(p => p.id === programaEditandoId);
+    const prog = programaEditandoId === "NUEVO" ? window.tempNuevoProg : programas.find(p => p.id === programaEditandoId);
 
     if(chk.checked) {
         slide.disabled = false;
@@ -507,12 +610,6 @@ function ejecutarLlenadoSecuencial() {
     document.getElementById('hw-flotante').className = 'hw-badge alert';
     document.getElementById('hw-flotante').innerHTML = `${ICONO_FLOTANTE_BOYA} <span>FLOTANTE: ¡DEMANDA AGUA! ⚠️</span>`;
     
-    const btnSim = document.getElementById('btn-sim-flotante');
-    if(btnSim) {
-        btnSim.innerText = 'Tanque Lleno (Cortar Flotante)';
-        btnSim.style.background = 'var(--success)';
-    }
-
     const estadoPrevio = sistemaEstado;
     const hwBomba = document.getElementById('hw-bomba');
     const hwTanque = document.getElementById('hw-tanque');
@@ -546,7 +643,6 @@ function ejecutarLlenadoSecuencial() {
         }, 500);
     } else {
         sistemaEstado = 'llenado_puro';
-        renderizarBotonesManualesEmulados();
         if(hwTanque) {
             hwTanque.className = 'hw-badge';
             hwTanque.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>VALV. TANQUE: ABIERTA</span>`;
@@ -560,6 +656,7 @@ function ejecutarLlenadoSecuencial() {
                 arrancarBucleTanque(timeoutTanqueConfigurado * 60);
             }
         }, 500);
+        renderizarBotonesManualesEmulados();
     }
 }
 
@@ -615,8 +712,6 @@ function detenerLlenadoSecuencial(porTimeout) {
         }
 
         tanqueLlamando = false;
-        const btnSim = document.getElementById('btn-sim-flotante');
-        if(btnSim) { btnSim.innerText = 'Simular Falta de Agua (Llamar)'; btnSim.style.background = 'var(--warning)'; }
 
         if (porTimeout && sistemaEstado.startsWith('pausa_tanque')) {
             alert("🚨 Abortado: Falla crítica de time-out en tanque.");
