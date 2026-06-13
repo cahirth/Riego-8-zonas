@@ -1,10 +1,14 @@
 // ============================================================================
 // FIRMWARE FRONTEND: Riego Hidráulico TLC
-// VERSION: v2.0.2 (Build: 20260613-1850)
-// DESCRIPCIÓN: Corrección estricta de variables del motor multiprograma
+// VERSION: v2.0.3 (Build: 20260613-1915)
+// DESCRIPCIÓN: Inicialización global estricta de intervalos de tiempo (No ReferenceError)
 // ============================================================================
 
-const CONFIG_VERSION = "v2.0.2 (Build: 20260613-1850)";
+const CONFIG_VERSION = "v2.0.3 (Build: 20260613-1915)";
+
+// DECLARACIÓN EXPLÍCITA DE VARIABLES GLOBALES DE CONTROL
+window.cicloInterval = null;
+window.tanqueInterval = null;
 
 const diasSemana = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 const nombresDiasLargos = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -250,7 +254,7 @@ function toggleInclusionZonaFisica(idZona) {
 }
 
 function cambiarMinutosZonaPrograma(idZona, valor) {
-    const prog = programaEditandoId === "NUEVO" ? window.tempNuevoProg : programas.find(p => p.id === programmeEditandoId);
+    const prog = programaEditandoId === "NUEVO" ? window.tempNuevoProg : programas.find(p => p.id === programaEditandoId);
     if(prog) {
         document.getElementById(`lbl-min-prog-${idZona}`).innerText = valor + "m";
         let zona = prog.zonas.find(z => z.id === idZona);
@@ -343,13 +347,13 @@ function arrancarBucleTiempoGenerico(esAutomatico) {
     document.getElementById('status-text').className = 'status-current running';
     document.getElementById('status-text').innerText = `${esAutomatico ? 'AUTO' : 'MANUAL'}: ZONA ${zonaActivaId} 💧`;
 
-    if(cicloInterval) clearInterval(cicloInterval);
-    cicloInterval = setInterval(() => {
+    if(window.cicloInterval) clearInterval(window.cicloInterval);
+    window.cicloInterval = setInterval(() => {
         if (tiempoRestanteActual > 0) {
             document.getElementById('timer-remaining').innerText = `Tiempo restante: ${tiempoRestanteActual} min`;
             tiempoRestanteActual--;
         } else {
-            clearInterval(cicloInterval);
+            clearInterval(window.cicloInterval);
             document.getElementById('hw-bomba').className = 'hw-badge';
             document.getElementById('hw-bomba').innerText = 'BOMBA: OFF';
             
@@ -377,7 +381,7 @@ function ejecutarLlenadoSecuencial() {
 
     if (estadoPrevio === 'riego_manual' || estadoPrevio === 'riego_auto') {
         sistemaEstado = 'pausa_tanque_' + estadoPrevio; 
-        clearInterval(cicloInterval);
+        if(window.cicloInterval) clearInterval(window.cicloInterval);
         document.getElementById('hw-bomba').className = 'hw-badge';
         document.getElementById('hw-bomba').innerText = 'BOMBA: OFF';
 
@@ -424,8 +428,8 @@ function arrancarBucleTanque(segundosTotales) {
     document.getElementById('status-text').className = 'status-current paused';
     document.getElementById('status-text').innerText = `⚠️ LLENANDO TANQUE`;
 
-    if(tanqueInterval) clearInterval(tanqueInterval);
-    tanqueInterval = setInterval(() => {
+    if(window.tanqueInterval) clearInterval(window.tanqueInterval);
+    window.tanqueInterval = setInterval(() => {
         if (tiempoLlenadoTanqueRestante > 0) {
             document.getElementById('timer-remaining').innerText = `Protección activa. Límite: ${tiempoLlenadoTanqueRestante} seg`;
             tiempoLlenadoTanqueRestante--;
@@ -436,7 +440,7 @@ function arrancarBucleTanque(segundosTotales) {
 }
 
 function detenerLlenadoSecuencial(porTimeout) {
-    if(tanqueInterval) clearInterval(tanqueInterval);
+    if(window.tanqueInterval) clearInterval(window.tanqueInterval);
     document.getElementById('hw-bomba').className = 'hw-badge';
     document.getElementById('hw-bomba').innerText = 'BOMBA: OFF';
 
@@ -464,8 +468,8 @@ function detenerLlenadoSecuencial(porTimeout) {
 }
 
 function forzarParadaTotal() {
-    if(cicloInterval) clearInterval(cicloInterval);
-    if(tanqueInterval) clearInterval(tanqueInterval);
+    if(window.cicloInterval) clearInterval(window.cicloInterval);
+    if(window.tanqueInterval) clearInterval(window.tanqueInterval);
     
     sistemaEstado = 'idle';
     zonaActivaId = null;
