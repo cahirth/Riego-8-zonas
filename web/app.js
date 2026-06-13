@@ -1,10 +1,10 @@
 // ============================================================================
 // FIRMWARE FRONTEND: Riego Hidráulico TLC
-// VERSION: v2.7.5 (Build: 20260613-2130)
-// DESCRIPCIÓN: Versión Depurada de Alta Estabilidad. SVGs y Sintaxis Verificados.
+// VERSION: v2.8.0 (Build: 20260613-2140)
+// DESCRIPCIÓN: Versión Definitiva Libre de Basura. SVGs Verificados y Optimizados.
 // ============================================================================
 
-const CONFIG_VERSION = "v2.7.5 (Build: 20260613-2130)";
+const CONFIG_VERSION = "v2.8.0 (Build: 20260613-2140)";
 
 window.cicloInterval = null;
 window.tanqueInterval = null;
@@ -12,7 +12,7 @@ window.tanqueInterval = null;
 const diasSemana = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 const nombresDiasLargos = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-// --- ICONOGRAFÍA VECTORIAL INDUSTRIAL CORREGIDA LÍNEA POR LÍNEA ---
+// --- ICONOGRAFÍA VECTORIAL INDUSTRIAL COMPROBADA ---
 const ICONO_ASPERSOR_JPG = `<svg viewBox="0 0 100 100" style="width:36px; height:36px; margin-bottom:6px; color:inherit;">
     <path fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" d="M50 90V55M35 55h30v8H35z"/>
     <rect x="46" y="38" width="8" height="17" fill="currentColor"/>
@@ -64,8 +64,8 @@ let ajusteEstacionalTLC = 100;
 
 function trazarVersionCompilacion() {
     console.log(
-        `%c 💧 TLC FRONTEND v2.7.5 — Entorno de Control Estable `,
-        "background: #00e676; color: #1e1e24; font-weight: bold; padding: 6px; border-radius: 4px;"
+        `%c 💧 TLC MAIN ENGINE v2.8.0 — Operación Industrial del Sistema `,
+        "background: #0d47a1; color: #ffffff; font-weight: bold; padding: 6px; border-radius: 4px;"
     );
 }
 
@@ -124,6 +124,7 @@ function actualizarDisplayTimeout(valor) {
     local_guardarEstadoGlobal();
 }
 
+// CORRECCIÓN SINTAXIS AJUSTE ESTACIONAL TLC
 function actualizarDisplayTLC(valor) {
     ajusteEstacionalTLC = parseInt(valor);
     const display = document.getElementById('display-tlc-estacional');
@@ -169,7 +170,7 @@ function renderizarMonitorPrincipal() {
 
     const esBloqueadoPorTanque = sistemaEstado.startsWith('pausa_tanque') || sistemaEstado === 'llenado_puro';
 
-    // 1. Fila de Comandos Unificada Superior (Flexbox Fluido)
+    // 1. Fila de Comandos Unificada Superior (Flexbox Fluido de 4 Botones en una línea)
     const filaUnicaComandos = document.createElement('div');
     filaUnicaComandos.style.display = "flex";
     filaUnicaComandos.style.gap = "6px";
@@ -208,10 +209,25 @@ function renderizarMonitorPrincipal() {
     });
     container.appendChild(gridZonas);
 
-    // 3. Programas Automáticos TLC
+    // 3. Slider de tiempo manual único
+    const cardManualSlider = document.createElement('div');
+    cardManualSlider.className = "zone-card";
+    cardManualSlider.style.marginTop = "12px";
+    cardManualSlider.style.marginBottom = "20px";
+    cardManualSlider.style.border = "1px solid #0288d1";
+    cardManualSlider.innerHTML = `
+        <div class="zone-name" style="color: #0288d1; font-weight: bold;">Tiempo de Activación Manual</div>
+        <div class="timer-control" style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
+            <span style="font-size: 13px; color: #555;">Duración:</span>
+            <input type="range" min="1" max="60" value="${tiempoManualGlobalConfigurado}" id="input-tiempo-manual-global" style="flex-grow: 1; margin: 0 15px;" oninput="actualizarDisplayTiempoManualGlobal(this.value)">
+            <span class="time-display" id="display-tiempo-manual-global" style="font-weight: bold; color: #0288d1; font-size: 16px; min-width: 35px; text-align: right;">${tiempoManualGlobalConfigurado}m</span>
+        </div>
+    `;
+    container.appendChild(cardManualSlider);
+
+    // 4. Programas Automáticos TLC
     const titleProgs = document.createElement('div');
     titleProgs.className = "manual-section-title";
-    titleProgs.style.marginTop = "20px";
     titleProgs.innerText = `Programas Automáticos (Ajuste Estacional TLC: ${ajusteEstacionalTLC}%)`;
     container.appendChild(titleProgs);
 
