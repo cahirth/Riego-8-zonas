@@ -1,10 +1,10 @@
 // ============================================================================
 // FIRMWARE FRONTEND: Riego Hidráulico TLC
-// VERSION: v2.7.3 (Build: 20260613-2025)
-// DESCRIPCIÓN: Interfaz compacta unificada. Botonera superior en una sola línea.
+// VERSION: v2.7.5 (Build: 20260613-2130)
+// DESCRIPCIÓN: Versión Depurada de Alta Estabilidad. SVGs y Sintaxis Verificados.
 // ============================================================================
 
-const CONFIG_VERSION = "v2.7.3 (Build: 20260613-2025)";
+const CONFIG_VERSION = "v2.7.5 (Build: 20260613-2130)";
 
 window.cicloInterval = null;
 window.tanqueInterval = null;
@@ -12,7 +12,7 @@ window.tanqueInterval = null;
 const diasSemana = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 const nombresDiasLargos = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-// --- ICONOGRAFÍA VECTORIAL INDUSTRIAL XL ---
+// --- ICONOGRAFÍA VECTORIAL INDUSTRIAL CORREGIDA LÍNEA POR LÍNEA ---
 const ICONO_ASPERSOR_JPG = `<svg viewBox="0 0 100 100" style="width:36px; height:36px; margin-bottom:6px; color:inherit;">
     <path fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" d="M50 90V55M35 55h30v8H35z"/>
     <rect x="46" y="38" width="8" height="17" fill="currentColor"/>
@@ -64,8 +64,8 @@ let ajusteEstacionalTLC = 100;
 
 function trazarVersionCompilacion() {
     console.log(
-        `%c 💧 TLC SYSTEM v2.7.3 — Compilación Compacta Exitosa `,
-        "background: #1565c0; color: #ffffff; font-weight: bold; padding: 6px; border-radius: 4px;"
+        `%c 💧 TLC FRONTEND v2.7.5 — Entorno de Control Estable `,
+        "background: #00e676; color: #1e1e24; font-weight: bold; padding: 6px; border-radius: 4px;"
     );
 }
 
@@ -169,24 +169,24 @@ function renderizarMonitorPrincipal() {
 
     const esBloqueadoPorTanque = sistemaEstado.startsWith('pausa_tanque') || sistemaEstado === 'llenado_puro';
 
-    // CONFIGURACIÓN DE UNA SOLA LÍNEA FLUIDA (Punto 2)
+    // 1. Fila de Comandos Unificada Superior (Flexbox Fluido)
     const filaUnicaComandos = document.createElement('div');
     filaUnicaComandos.style.display = "flex";
-    filaUnicaComandos.style.gap = "5px";
+    filaUnicaComandos.style.gap = "6px";
     filaUnicaComandos.style.marginBottom = "15px";
     
     const textoBotonFlotante = tanqueLlamando ? '🟢 OK' : '⚠️ Tanque';
     const colorBotonFlotante = tanqueLlamando ? 'var(--success)' : 'var(--warning)';
     
     filaUnicaComandos.innerHTML = `
-        <button class="btn" style="background:#0288d1; flex:1; padding:10px 2px; font-size:11px; font-weight:bold;" onclick="navegarHacia('config.html')">⚙️ Config</button>
-        <button class="btn" style="background:#4caf50; flex:1; padding:10px 2px; font-size:11px; font-weight:bold;" onclick="enviarConfiguracionFlashESP32()">💾 Sincro</button>
-        <button class="btn" style="background:#7b1fa2; flex:1; padding:10px 2px; font-size:11px; font-weight:bold;" onclick="ejecutarLlenadoSecuencial()">🚰 Llenar</button>
-        <button class="btn" id="btn-sim-flotante" style="background:${colorBotonFlotante}; color:var(--dark); flex:1; padding:10px 2px; font-size:11px; font-weight:800;" onclick="gestionarFlotanteSimulado()">${textoBotonFlotante}</button>
+        <button class="btn" style="background:#0288d1; flex:1; padding:10px 2px; font-size:12px; font-weight:bold;" onclick="navegarHacia('config.html')">⚙️ Config</button>
+        <button class="btn" style="background:#4caf50; flex:1; padding:10px 2px; font-size:12px; font-weight:bold;" onclick="enviarConfiguracionFlashESP32()">💾 Sincro</button>
+        <button class="btn" style="background:#7b1fa2; flex:1; padding:10px 2px; font-size:12px; font-weight:bold;" onclick="ejecutarLlenadoSecuencial()">🚰 Llenar</button>
+        <button class="btn" id="btn-sim-flotante" style="background:${colorBotonFlotante}; color:var(--dark); flex:1; padding:10px 2px; font-size:12px; font-weight:800;" onclick="gestionarFlotanteSimulado()">${textoBotonFlotante}</button>
     `;
     container.appendChild(filaUnicaComandos);
 
-    // Grilla de Válvulas del Colector
+    // 2. Grilla de Válvulas Manuales
     const titleManual = document.createElement('div');
     titleManual.className = "manual-section-title";
     titleManual.innerText = "Zonas Físicas del Colector (Prueba Manual Directa)";
@@ -208,10 +208,10 @@ function renderizarMonitorPrincipal() {
     });
     container.appendChild(gridZonas);
 
-    // Programas Automáticos TLC (El slider inferior del punto 3 fue eliminado por completo)
+    // 3. Programas Automáticos TLC
     const titleProgs = document.createElement('div');
     titleProgs.className = "manual-section-title";
-    titleProgs.style.marginTop = "15px";
+    titleProgs.style.marginTop = "20px";
     titleProgs.innerText = `Programas Automáticos (Ajuste Estacional TLC: ${ajusteEstacionalTLC}%)`;
     container.appendChild(titleProgs);
 
