@@ -1,10 +1,10 @@
 // ============================================================================
 // FIRMWARE FRONTEND: Riego Hidráulico TLC
-// VERSION: v2.8.0 (Build: 20260613-2140)
-// DESCRIPCIÓN: Versión Definitiva Libre de Basura. SVGs Verificados y Optimizados.
+// VERSION: v2.8.6 (Build: 20260613-2315)
+// DESCRIPCIÓN: Unificación de indicadores de Hardware en fila única horizontal.
 // ============================================================================
 
-const CONFIG_VERSION = "v2.8.0 (Build: 20260613-2140)";
+const CONFIG_VERSION = "v2.8.6 (Build: 20260613-2315)";
 
 window.cicloInterval = null;
 window.tanqueInterval = null;
@@ -12,20 +12,20 @@ window.tanqueInterval = null;
 const diasSemana = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 const nombresDiasLargos = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-// --- ICONOGRAFÍA VECTORIAL INDUSTRIAL COMPROBADA ---
-const ICONO_ASPERSOR_JPG = `<svg viewBox="0 0 100 100" style="width:36px; height:36px; margin-bottom:6px; color:inherit;">
+// --- ICONOGRAFÍA VECTORIAL COMPACTA PARA FILA ÚNICA ---
+const ICONO_ASPERSOR_JPG = `<svg viewBox="0 0 100 100" style="width:32px; height:32px; margin-bottom:4px; color:inherit;">
     <path fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" d="M50 90V55M35 55h30v8H35z"/>
     <rect x="46" y="38" width="8" height="17" fill="currentColor"/>
     <path fill="none" stroke="#2196F3" stroke-width="3.5" stroke-dasharray="4 3" d="M42 32C32 28 18 32 10 42M58 32C68 28 82 32 90 42"/>
     <path fill="none" stroke="#4CAF50" stroke-width="4" stroke-linecap="round" d="M15 90c15-8 55-8 70 0"/>
 </svg>`;
 
-const ICONO_BOMBA_JPG = `<svg viewBox="0 0 100 100" style="width:24px; height:24px; vertical-align:middle; margin-right:6px;">
+const ICONO_BOMBA_JPG = `<svg viewBox="0 0 100 100" style="width:16px; height:16px; vertical-align:middle; margin-right:4px;">
     <circle cx="35" cy="55" r="22" fill="none" stroke="currentColor" stroke-width="5"/>
     <path fill="currentColor" d="M35 33h45v44H35zM50 20h16v13H50zM18 55h17v6H18zM70 42h10v4H70zm0 10h10v4H70zm0 10h10v4H70z"/>
 </svg>`;
 
-const ICONO_VALVULA_SOLENOIDE = `<svg viewBox="0 0 100 100" style="width:24px; height:24px; vertical-align:middle; margin-right:6px;">
+const ICONO_VALVULA_SOLENOIDE = `<svg viewBox="0 0 100 100" style="width:16px; height:16px; vertical-align:middle; margin-right:4px;">
     <rect x="38" y="10" width="24" height="26" rx="3" fill="currentColor"/>
     <rect x="46" y="36" width="8" height="10" fill="currentColor"/>
     <path fill="currentColor" d="M15 50l30 18V32zM85 50L55 32v36z"/>
@@ -33,7 +33,7 @@ const ICONO_VALVULA_SOLENOIDE = `<svg viewBox="0 0 100 100" style="width:24px; h
     <path d="M42 56h16v6H42z" fill="none" stroke="#fff" stroke-width="2"/>
 </svg>`;
 
-const ICONO_FLOTANTE_BOYA = `<svg viewBox="0 0 100 100" style="width:24px; height:24px; vertical-align:middle; margin-right:6px;">
+const ICONO_FLOTANTE_BOYA = `<svg viewBox="0 0 100 100" style="width:16px; height:16px; vertical-align:middle; margin-right:4px;">
     <path d="M15 25h12v10H15z" fill="currentColor"/>
     <path fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" d="M27 30l38 18"/>
     <circle cx="73" cy="52" r="14" fill="none" stroke="currentColor" stroke-width="4"/>
@@ -64,8 +64,8 @@ let ajusteEstacionalTLC = 100;
 
 function trazarVersionCompilacion() {
     console.log(
-        `%c 💧 TLC MAIN ENGINE v2.8.0 — Operación Industrial del Sistema `,
-        "background: #0d47a1; color: #ffffff; font-weight: bold; padding: 6px; border-radius: 4px;"
+        `%c 💧 TLC MAIN ENGINE v2.8.6 — Indicadores de Protección Unificados `,
+        "background: #2e7d32; color: #ffffff; font-weight: bold; padding: 6px; border-radius: 4px;"
     );
 }
 
@@ -96,13 +96,6 @@ function local_recuperarEstadoGoblal() {
         sliderInput.value = tiempoManualGlobalConfigurado;
         sliderDisplay.innerText = tiempoManualGlobalConfigurado + "m";
     }
-
-    const tlcInput = document.getElementById('input-tlc-estacional');
-    const tlcDisplay = document.getElementById('display-tlc-estacional');
-    if(tlcInput && tlcDisplay) {
-        tlcInput.value = ajusteEstacionalTLC;
-        tlcDisplay.innerText = ajusteEstacionalTLC + "%";
-    }
     
     inyectarIconosEstaticosHardware();
 }
@@ -113,8 +106,8 @@ function inyectarIconosEstaticosHardware() {
     const lblFlotante = document.getElementById('hw-flotante');
     
     if(lblBomba) lblBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: OFF</span>`;
-    if(lblValvula) lblValvula.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
-    if(lblFlotante) lblFlotante.innerHTML = `${ICONO_FLOTANTE_BOYA} <span>FLOTANTE: TANQUE OK</span>`;
+    if(lblValvula) lblValvula.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>TQ: CERRADO</span>`;
+    if(lblFlotante) lblFlotante.innerHTML = `${ICONO_FLOTANTE_BOYA} <span>FLOTANTE: OK</span>`;
 }
 
 function actualizarDisplayTimeout(valor) {
@@ -124,7 +117,6 @@ function actualizarDisplayTimeout(valor) {
     local_guardarEstadoGlobal();
 }
 
-// CORRECCIÓN SINTAXIS AJUSTE ESTACIONAL TLC
 function actualizarDisplayTLC(valor) {
     ajusteEstacionalTLC = parseInt(valor);
     const display = document.getElementById('display-tlc-estacional');
@@ -170,7 +162,7 @@ function renderizarMonitorPrincipal() {
 
     const esBloqueadoPorTanque = sistemaEstado.startsWith('pausa_tanque') || sistemaEstado === 'llenado_puro';
 
-    // 1. Fila de Comandos Unificada Superior (Flexbox Fluido de 4 Botones en una línea)
+    // Fila de Comandos Unificada Superior
     const filaUnicaComandos = document.createElement('div');
     filaUnicaComandos.style.display = "flex";
     filaUnicaComandos.style.gap = "6px";
@@ -180,14 +172,13 @@ function renderizarMonitorPrincipal() {
     const colorBotonFlotante = tanqueLlamando ? 'var(--success)' : 'var(--warning)';
     
     filaUnicaComandos.innerHTML = `
-        <button class="btn" style="background:#0288d1; flex:1; padding:10px 2px; font-size:12px; font-weight:bold;" onclick="navegarHacia('config.html')">⚙️ Config</button>
-        <button class="btn" style="background:#4caf50; flex:1; padding:10px 2px; font-size:12px; font-weight:bold;" onclick="enviarConfiguracionFlashESP32()">💾 Sincro</button>
-        <button class="btn" style="background:#7b1fa2; flex:1; padding:10px 2px; font-size:12px; font-weight:bold;" onclick="ejecutarLlenadoSecuencial()">🚰 Llenar</button>
+        <button class="btn" style="background:#4caf50; flex:1; padding:10px 2px; font-size:12px; font-weight:bold;" onclick="enviarConfiguracionFlashESP32()">💾 Sincro Flash</button>
+        <button class="btn" style="background:#7b1fa2; flex:1; padding:10px 2px; font-size:12px; font-weight:bold;" onclick="ejecutarLlenadoSecuencial()">🚰 Llenar Tanque</button>
         <button class="btn" id="btn-sim-flotante" style="background:${colorBotonFlotante}; color:var(--dark); flex:1; padding:10px 2px; font-size:12px; font-weight:800;" onclick="gestionarFlotanteSimulado()">${textoBotonFlotante}</button>
     `;
     container.appendChild(filaUnicaComandos);
 
-    // 2. Grilla de Válvulas Manuales
+    // Grilla de Válvulas Manuales
     const titleManual = document.createElement('div');
     titleManual.className = "manual-section-title";
     titleManual.innerText = "Zonas Físicas del Colector (Prueba Manual Directa)";
@@ -209,7 +200,7 @@ function renderizarMonitorPrincipal() {
     });
     container.appendChild(gridZonas);
 
-    // 3. Slider de tiempo manual único
+    // Slider de tiempo manual único
     const cardManualSlider = document.createElement('div');
     cardManualSlider.className = "zone-card";
     cardManualSlider.style.marginTop = "12px";
@@ -225,7 +216,7 @@ function renderizarMonitorPrincipal() {
     `;
     container.appendChild(cardManualSlider);
 
-    // 4. Programas Automáticos TLC
+    // Programas Automáticos TLC
     const titleProgs = document.createElement('div');
     titleProgs.className = "manual-section-title";
     titleProgs.innerText = `Programas Automáticos (Ajuste Estacional TLC: ${ajusteEstacionalTLC}%)`;
@@ -378,7 +369,7 @@ function toggleInclusionZonaFisica(idZona) {
 }
 
 function cambiarMinutosZonaPrograma(idZona, valor) {
-    const prog = programaEditandoId === "NUEVO" ? window.tempNuevoProg : programas.find(p => p.id === programaEditandoId);
+    const prog = programaEditandoId === "NUEVO" ? window.tempNuevoProg : programas.find(p => p.id === programmingEditandoId);
     if(prog) {
         document.getElementById(`lbl-min-prog-${idZona}`).innerText = valor + "m";
         let zona = prog.zonas.find(z => z.id === idZona);
@@ -435,11 +426,11 @@ function toggleZonaManualDirecta(zonaId) {
 
     if(hwTanque) {
         hwTanque.className = 'hw-badge closed';
-        hwTanque.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
+        hwTanque.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>TQ: CERRADO</span>`;
     }
     if(hwBomba) {
         hwBomba.className = 'hw-badge on';
-        hwBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: RUNNING ⚡</span>`;
+        hwBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: RUN ⚡</span>`;
     }
 
     arrancarBucleTiempoGenerico(false);
@@ -473,11 +464,11 @@ function avanzarCicloAutomaticoMulti() {
 
         if(hwTanque) {
             hwTanque.className = 'hw-badge closed';
-            hwTanque.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
+            hwTanque.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>TQ: CERRADO</span>`;
         }
         if(hwBomba) {
             hwBomba.className = 'hw-badge on';
-            hwBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: RUNNING ⚡</span>`;
+            hwBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: RUN ⚡</span>`;
         }
 
         arrancarBucleTiempoGenerico(true);
@@ -499,7 +490,7 @@ function arrancarBucleTiempoGenerico(esAutomatico) {
     const hwBomba = document.getElementById('hw-bomba');
     if(hwBomba) {
         hwBomba.className = 'hw-badge on';
-        hwBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: RUNNING ⚡</span>`;
+        hwBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: RUN ⚡</span>`;
     }
 
     if(lblText) {
@@ -539,7 +530,7 @@ function ejecutarLlenadoSecuencial() {
     const hwFlotante = document.getElementById('hw-flotante');
     if(hwFlotante) {
         hwFlotante.className = 'hw-badge alert';
-        hwFlotante.innerHTML = `${ICONO_FLOTANTE_BOYA} <span>FLOTANTE: ¡DEMANDA AGUA! ⚠️</span>`;
+        hwFlotante.innerHTML = `${ICONO_FLOTANTE_BOYA} <span>FALLA AGUA</span>`;
     }
     
     const estadoPrevio = sistemaEstado;
@@ -558,7 +549,7 @@ function ejecutarLlenadoSecuencial() {
         setTimeout(() => {
             if(hwTanque) {
                 hwTanque.className = 'hw-badge';
-                hwTanque.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>VALV. TANQUE: ABIERTA</span>`;
+                hwTanque.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>TQ: ABIERTO</span>`;
             }
             if(lblText) {
                 lblText.className = 'status-current paused';
@@ -569,7 +560,7 @@ function ejecutarLlenadoSecuencial() {
                 if (tanqueLlamando) {
                     if(hwBomba) {
                         hwBomba.className = 'hw-badge on';
-                        hwBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: RUNNING (LLENANDO TANQUE) ⚡</span>`;
+                        hwBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: LLENANDO ⚡</span>`;
                     }
                     arrancarBucleTanque(timeoutTanqueConfigurado * 60);
                 }
@@ -580,13 +571,13 @@ function ejecutarLlenadoSecuencial() {
         sistemaEstado = 'llenado_puro';
         if(hwTanque) {
             hwTanque.className = 'hw-badge';
-            hwTanque.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>VALV. TANQUE: ABIERTA</span>`;
+            hwTanque.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>TQ: ABIERTO</span>`;
         }
         setTimeout(() => {
             if (tanqueLlamando) {
                 if(hwBomba) {
                     hwBomba.className = 'hw-badge on';
-                    hwBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: RUNNING (LLENANDO TANQUE) ⚡</span>`;
+                    hwBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: LLENANDO ⚡</span>`;
                 }
                 arrancarBucleTanque(timeoutTanqueConfigurado * 60);
             }
@@ -621,7 +612,7 @@ function arrancarBucleTanque(segundosTotales) {
     window.tanqueInterval = setInterval(() => {
         const tr = document.getElementById('timer-remaining');
         if (tiempoLlenadoTanqueRestante > 0) {
-            if(tr) tr.innerText = `Protección activa. Límite: ${tiempoLlenadoTanqueRestante} seg`;
+            if(tr) tr.innerText = `Límite: ${tiempoLlenadoTanqueRestante} seg`;
             tiempoLlenadoTanqueRestante--;
         } else {
             detenerLlenadoSecuencial(true);
@@ -643,11 +634,11 @@ function detenerLlenadoSecuencial(porTimeout) {
     setTimeout(() => {
         if(hwTanque) {
             hwTanque.className = 'hw-badge closed';
-            hwTanque.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
+            hwTanque.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>TQ: CERRADO</span>`;
         }
         if(hwFlotante) {
             hwFlotante.className = 'hw-badge';
-            hwFlotante.innerHTML = `${ICONO_FLOTANTE_BOYA} <span>FLOTANTE: TANQUE OK</span>`;
+            hwFlotante.innerHTML = `${ICONO_FLOTANTE_BOYA} <span>FLOTANTE: OK</span>`;
         }
 
         tanqueLlamando = false;
@@ -697,25 +688,11 @@ function forzarParadaTotal() {
     }
     if(hwTanque) {
         hwTanque.className = 'hw-badge closed';
-        hwTanque.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
+        hwTanque.innerHTML = `${ICONO_VALVULA_SOLENOIDE} <span>TQ: CERRADO</span>`;
     }
     if(hwFlotante) {
         hwFlotante.className = 'hw-badge';
-        hwFlotante.innerHTML = `${ICONO_FLOTANTE_BOYA} <span>FLOTANTE: TANQUE OK</span>`;
-    }
-    
-    const sliderInput = document.getElementById('input-tiempo-manual-global');
-    const sliderDisplay = document.getElementById('display-tiempo-manual-global');
-    if(sliderInput && sliderDisplay) {
-        sliderInput.value = tiempoManualGlobalConfigurado;
-        sliderDisplay.innerText = tiempoManualGlobalConfigurado + "m";
-    }
-
-    const tlcInput = document.getElementById('input-tlc-estacional');
-    const tlcDisplay = document.getElementById('display-tlc-estacional');
-    if(tlcInput && tlcDisplay) {
-        tlcInput.value = ajusteEstacionalTLC;
-        tlcDisplay.innerText = ajusteEstacionalTLC + "%";
+        hwFlotante.innerHTML = `${ICONO_FLOTANTE_BOYA} <span>FLOTANTE: OK</span>`;
     }
 
     actualizarFechaHoy();
