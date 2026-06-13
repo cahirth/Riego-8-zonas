@@ -1,10 +1,10 @@
 // ============================================================================
 // FIRMWARE FRONTEND: Riego Hidráulico TLC
-// VERSION: v2.3.0 (Build: 20260613-2240)
-// DESCRIPCIÓN: Íconos industriales minimalistas de alta calidad + Gestión de Períodos (Invierno)
+// VERSION: v2.4.0 (Build: 20260613-2330)
+// DESCRIPCIÓN: Íconos realistas basados en JPGs + Ajuste Estacional Global Tipo Hunter
 // ============================================================================
 
-const CONFIG_VERSION = "v2.3.0 (Build: 20260613-2240)";
+const CONFIG_VERSION = "v2.4.0 (Build: 20260613-2330)";
 
 window.cicloInterval = null;
 window.tanqueInterval = null;
@@ -12,29 +12,35 @@ window.tanqueInterval = null;
 const diasSemana = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 const nombresDiasLargos = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-// --- ÍCONOS SVG MINIMALISTAS INDUSTRIALES DE ALTA CALIDAD (REDISENO LIMPIO) ---
-const ICONO_ASPERSOR_JPG = `<svg viewBox="0 0 24 24" style="width:26px; height:26px; margin-bottom:4px; color:inherit;">
-    <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M12 22v-6m-3 0h6v3H9zm3-6V9m0 0c-2.5 0-4.5-1.5-5.5-3M12 9c2.5 0 4.5-1.5 5.5-3M3 4c1-1 3-1 4 0M17 4c1-1 3-1 4 0M10 3c.5-.7 1.5-.7 2 0"/>
+// --- ICONOGRAFÍA REALISTA VECTORIAL DETALLADA (CALCADA DE TUS FOTOS) ---
+const ICONO_ASPERSOR_JPG = `<svg viewBox="0 0 100 100" style="width:32px; height:32px; margin-bottom:4px; color:inherit;">
+    <path fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" d="M50 90V55M35 55h30v8H35z"/>
+    <rect x="46" y="38" width="8" height="17" fill="currentColor"/>
+    <path fill="none" stroke="#2196F3" stroke-width="3.5" stroke-dasharray="4 3" d="M42 32C32 28 18 32 10 42M58 32C68 28 82 32 90 42"/>
+    <path fill="none" stroke="#4CAF50" stroke-width="4" stroke-linecap="round" d="M15 90c15-8 55-8 70 0"/>
 </svg>`;
 
-const ICONO_BOMBA_JPG = `<svg viewBox="0 0 24 24" style="width:22px; height:22px; vertical-align:middle; margin-right:8px;">
-    <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M18 12a6 6 0 1 1-12 0 6 6 0 0 1 12 0zm0 0h4v3h-4zm-9-6V2h4v4M4 16h2m-2-4h2m-2-4h2M12 9v6m-3-3h6"/>
+const ICONO_BOMBA_JPG = `<svg viewBox="0 0 100 100" style="width:24px; height:24px; vertical-align:middle; margin-right:8px;">
+    <circle cx="35" cy="55" r="22" fill="none" stroke="currentColor" stroke-width="5"/>
+    <path fill="currentColor" d="M35 33h45v44H35zM50 20h16v13H50zM18 55h17v6H18zM70 42h10v4H70zm0 10h10v4H70zm0 10h10v4H70z"/>
 </svg>`;
 
-const ICONO_FLOTANTE_JPG = `<svg viewBox="0 0 24 24" style="width:22px; height:22px; vertical-align:middle; margin-right:8px;">
-    <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M12 2v4m0 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm-3-4h6v2H9zm3 10v2"/>
+const ICONO_FLOTANTE_JPG = `<svg viewBox="0 0 100 100" style="width:24px; height:24px; vertical-align:middle; margin-right:8px;">
+    <path fill="none" stroke="currentColor" stroke-width="4" d="M75 10v40"/>
+    <rect x="70" y="50" width="10" height="12" fill="currentColor"/>
+    <rect x="30" y="32" width="28" height="16" rx="6" fill="none" stroke="currentColor" stroke-width="4" transform="rotate(-25 44 40)"/>
+    <rect x="42" y="62" width="28" height="16" rx="6" fill="none" stroke="currentColor" stroke-width="4" transform="rotate(25 56 70)"/>
+    <path fill="none" stroke="currentColor" stroke-width="3" d="M72 56c-10 0-18-10-26-14m26 2c-8 0-14 6-20 10"/>
 </svg>`;
-
 
 let zonasMaestras = [];
 for (let i = 1; i <= 8; i++) {
     zonasMaestras.push({ id: i, nombre: `Zona Riego ${i}` });
 }
 
-// Estructura de programas actualizada con el campo 'periodo'
 let programas = [
-    { id: 1, nombre: "Programa Mañana (A)", start_time: "06:00", dias: [1, 3, 5], periodo: "anual", zonas: [{id: 1, min: 10}, {id: 2, min: 15}] },
-    { id: 2, nombre: "Programa Tarde (B) - Invierno", start_time: "19:30", dias: [2, 4], periodo: "invierno", zonas: [{id: 4, min: 12}] }
+    { id: 1, nombre: "Programa Mañana (A)", start_time: "07:30", dias: [1, 3, 5], zonas: [{id: 1, min: 10}, {id: 2, min: 5}, {id: 5, min: 20}] },
+    { id: 2, nombre: "Programa Tarde (B)", start_time: "19:30", dias: [2, 4], zonas: [{id: 4, min: 12}] }
 ];
 
 let programaEditandoId = null;
@@ -48,10 +54,13 @@ let listaZonasPrioridad = [];
 let tanqueLlamando = false;
 let tiempoManualGlobalConfigurado = 5;
 
+// VARIABLE TIPO HUNTER: Factor multiplicador porcentual del tiempo de riego estacional
+let ajusteEstacionalHunter = 100; 
+
 function trazarVersionCompilacion() {
     console.log(
-        `%c 💧 TLC MULTIPROGRAMA CUSTOM — Active Version: ${CONFIG_VERSION} `,
-        "background: #1e1e24; color: #00e676; font-weight: bold; padding: 4px; border-radius: 4px;"
+        `%c 💧 TLC MULTIPROGRAMA HUNTER — Active Version: ${CONFIG_VERSION} `,
+        "background: #2e7d32; color: #ffffff; font-weight: bold; padding: 4px; border-radius: 4px;"
     );
 }
 
@@ -59,7 +68,8 @@ function local_guardarEstadoGlobal() {
     const backup = {
         programas: programas,
         timeoutTanqueConfigurado: timeoutTanqueConfigurado,
-        tiempoManualGlobalConfigurado: tiempoManualGlobalConfigurado
+        tiempoManualGlobalConfigurado: tiempoManualGlobalConfigurado,
+        ajusteEstacionalHunter: ajusteEstacionalHunter
     };
     localStorage.setItem('TLC_RIEGO_MULTI_DATA', JSON.stringify(backup));
 }
@@ -71,15 +81,22 @@ function local_recuperarEstadoGoblal() {
         const cache = JSON.parse(datosGuardados);
         programas = cache.programas;
         timeoutTanqueConfigurado = cache.timeoutTanqueConfigurado;
-        if(cache.tiempoManualGlobalConfigurado) {
-            tiempoManualGlobalConfigurado = cache.tiempoManualGlobalConfigurado;
-        }
+        if(cache.tiempoManualGlobalConfigurado) tiempoManualGlobalConfigurado = cache.tiempoManualGlobalConfigurado;
+        if(cache.ajusteEstacionalHunter !== undefined) ajusteEstacionalHunter = cache.ajusteEstacionalHunter;
     }
+    
     const sliderInput = document.getElementById('input-tiempo-manual-global');
     const sliderDisplay = document.getElementById('display-tiempo-manual-global');
     if(sliderInput && sliderDisplay) {
         sliderInput.value = tiempoManualGlobalConfigurado;
         sliderDisplay.innerText = tiempoManualGlobalConfigurado + "m";
+    }
+
+    const hunterInput = document.getElementById('input-hunter-estacional');
+    const hunterDisplay = document.getElementById('display-hunter-estacional');
+    if(hunterInput && hunterDisplay) {
+        hunterInput.value = ajusteEstacionalHunter;
+        hunterDisplay.innerText = ajusteEstacionalHunter + "%";
     }
     
     inyectarIconosEstaticosHardware();
@@ -88,23 +105,21 @@ function local_recuperarEstadoGoblal() {
 function inyectarIconosEstaticosHardware() {
     const lblBomba = document.getElementById('hw-bomba');
     const lblValvula = document.getElementById('hw-tanque');
-    const lblFlotante = document.getElementById('hw-flotante');
-
-    if(lblBomba) {
-        lblBomba.innerHTML = `${ICONO_BOMBA_JPG} <span id="txt-bomba">BOMBA: OFF</span>`;
-    }
-    if(lblValvula) {
-        lblValvula.innerHTML = `${ICONO_FLOTANTE_JPG} <span id="txt-tanque">VALV. TANQUE: CERRADA (NC) 🔴</span>`;
-    }
-    if(lblFlotante) {
-        lblFlotante.innerHTML = `<span>FLOTANTE: TANQUE OK</span>`;
-    }
+    if(lblBomba) lblBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: OFF</span>`;
+    if(lblValvula) lblValvula.innerHTML = `${ICONO_FLOTANTE_JPG} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
 }
 
 function actualizarDisplayTimeout(valor) {
     timeoutTanqueConfigurado = parseInt(valor);
     const display = document.getElementById('display-timeout-tanque');
     if(display) display.innerText = valor === '0' ? 'Manual' : valor + 'm';
+    local_guardarEstadoGlobal();
+}
+
+function actualizarDisplayHunter(valor) {
+    ajusteEstacionalHunter = parseInt(valor);
+    const display = document.getElementById('display-hunter-estacional');
+    if(display) display.innerText = valor + "%";
     local_guardarEstadoGlobal();
 }
 
@@ -157,18 +172,14 @@ function renderizarMonitorPrincipal() {
         const btn = document.createElement('div');
         btn.className = `btn-manual ${extraClass}`;
         btn.onclick = () => { if(!esBloqueadoPorTanque) toggleZonaManualDirecta(zona.id); };
-        
-        btn.innerHTML = `
-            ${ICONO_ASPERSOR_JPG}
-            <span>${zona.nombre}</span>
-        `;
+        btn.innerHTML = `${ICONO_ASPERSOR_JPG} <span>${zona.nombre}</span>`;
         gridZonas.appendChild(btn);
     });
     container.appendChild(gridZonas);
 
     const titleProgs = document.createElement('div');
     titleProgs.className = "manual-section-title";
-    titleProgs.innerText = "Programas Automáticos Almacenados";
+    titleProgs.innerText = `Programas Automáticos (Ajuste Estacional: ${ajusteEstacionalHunter}%)`;
     container.appendChild(titleProgs);
 
     programas.forEach(prog => {
@@ -178,19 +189,18 @@ function renderizarMonitorPrincipal() {
         
         let stringDias = prog.dias.map(d => diasSemana[d]).join(' - ');
         
-        // Ajuste visual de tiempos si es periodo de invierno (Aplica factor de reducción del 50%)
-        let esInvierno = (prog.periodo === 'invierno');
+        // CALCULO TIPO HUNTER: Aplica el factor estacional global a la visualización
         let listadoZonas = prog.zonas.map(z => {
-            let minutosCalculados = esInvierno ? Math.max(1, Math.round(z.min / 2)) : z.min;
-            return `Z${z.id} (${minutosCalculados}m${esInvierno ? ' ❄️':''})`;
+            let minsCalculados = Math.max(1, Math.round(z.min * (ajusteEstacionalHunter / 100)));
+            return `Z${z.id} (${minsCalculados}m)`;
         }).join(', ');
 
         card.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <div>
                     <strong>⚙️ ${prog.nombre}</strong> — <span style="color:var(--primary); font-weight:bold;">${prog.start_time} hs</span>
-                    <div style="font-size:11px; color:#666; margin-top:4px;">Calendario: [${stringDias}] | Período: <strong style="color:${esInvierno?'#0288d1':'#2e7d32'}">${esInvierno?'❄️ Solo Invierno':'☀️ Todo el Año'}</strong></div>
-                    <div style="font-size:12px; color:var(--dark); font-weight:bold; margin-top:2px;">Zonas running: ${listadoZonas || 'Ninguna'}</div>
+                    <div style="font-size:11px; color:#666; margin-top:4px;">Calendario: [${stringDias}]</div>
+                    <div style="font-size:12px; color:var(--dark); font-weight:bold; margin-top:2px;">Tiempos Escalados: ${listadoZonas || 'Ninguna'}</div>
                 </div>
                 <button class="btn" style="width:auto; padding:8px 12px; font-size:12px; background:var(--success);" onclick="lanzarProgramaDesdeMonitor(${prog.id})">▶️ Ejecutar</button>
             </div>
@@ -210,15 +220,13 @@ function renderizarPantallaConfiguracion() {
         card.style.marginBottom = "15px";
 
         let stringDias = prog.dias.map(d => diasSemana[d]).join(' - ');
-        let esInvierno = (prog.periodo === 'invierno');
-        let totalMinutos = prog.zonas.reduce((acc, current) => {
-            let mins = esInvierno ? Math.max(1, Math.round(current.min / 2)) : current.min;
-            return acc + mins;
-        }, 0);
+        
+        let totalNominal = prog.zonas.reduce((acc, z) => acc + z.min, 0);
+        let totalEscalado = prog.zonas.reduce((acc, z) => acc + Math.max(1, Math.round(z.min * (ajusteEstacionalHunter / 100))), 0);
 
         card.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:8px;">
-                <span style="font-size:16px; font-weight:bold; color:var(--dark);">📋 ${prog.nombre} ${esInvierno?'❄️':''}</span>
+                <span style="font-size:16px; font-weight:bold; color:var(--dark);">📋 ${prog.nombre}</span>
                 <div style="display:flex; gap:5px;">
                     <button class="btn" style="padding:6px 12px; font-size:12px; background:var(--primary);" onclick="abrirEditorPrograma(${prog.id})">📝 Modificar</button>
                     <button class="btn" style="padding:6px 12px; font-size:12px; background:var(--danger);" onclick="eliminarPrograma(${prog.id})">🗑️ Borrar</button>
@@ -226,9 +234,9 @@ function renderizarPantallaConfiguracion() {
             </div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; font-size:13px; color:#555;">
                 <div>⏰ Hora Arranque: <strong>${prog.start_time} hs</strong></div>
-                <div>⏱️ Duración Total: <strong>${totalMinutos} min ${esInvierno?'(Reducido 50%)':''}</strong></div>
+                <div>⏱️ Duración Base: <strong>${totalNominal} min</strong></div>
                 <div style="grid-column: span 2; margin-top:5px;">📅 Días de Riego: <span style="color:var(--primary); font-weight:bold;">${stringDias || 'Ninguno seleccionado'}</span></div>
-                <div style="grid-column: span 2; margin-top:3px;">❄️ Régimen de Estación: <strong>${esInvierno ? 'Modo Invierno Activo (Menos caudal)':'Régimen Normal Completo'}</strong></div>
+                <div style="grid-column: span 2; margin-top:5px; color:var(--success); font-weight:bold;">⏱️ Tiempo con Ajuste Hunter (${ajusteEstacionalHunter}%): ${totalEscalado} min</div>
             </div>
         `;
         container.appendChild(card);
@@ -237,37 +245,13 @@ function renderizarPantallaConfiguracion() {
 
 function abrirEditorPrograma(id) {
     programaEditandoId = id;
-    const prog = id ? programas.find(p => p.id === id) : { id: Date.now(), nombre: "Nuevo Programa", start_time: "07:00", dias: [], periodo: "anual", zonas: [] };
+    const prog = id ? programas.find(p => p.id === id) : { id: Date.now(), nombre: "Nuevo Programa", start_time: "07:00", dias: [], zonas: [] };
     
     if(!programas.find(p => p.id === id) && id !== null) return;
 
     document.getElementById('modal-titulo').innerText = id ? "Modificar Programa" : "Crear Nuevo Programa";
     document.getElementById('modal-nombre-prog').value = prog.nombre;
     document.getElementById('modal-start-time').value = prog.start_time;
-
-    // Inyección dinámica de selector de periodo dentro del modal de configuración
-    let contenedorAsignacion = document.getElementById('modal-zones-assignment');
-    if(contenedorAsignacion) {
-        // Busco si ya existe el combo de periodo, si no lo creo arriba de las zonas
-        let idFiltro = document.getElementById('wrapper-periodo-select');
-        if(!idFiltro) {
-            const wrapSelect = document.createElement('div');
-            wrapSelect.id = "wrapper-periodo-select";
-            wrapSelect.style.marginBottom = "15px";
-            wrapSelect.style.padding = "10px";
-            wrapSelect.style.background = "#f1f3f4";
-            wrapSelect.style.borderRadius = "6px";
-            wrapSelect.innerHTML = `
-                <label style="display:block; font-weight:bold; font-size:13px; margin-bottom:5px; color:var(--dark);">⚙️ Período Estacional del Programa:</label>
-                <select id="modal-periodo-select" style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc; font-size:14px;">
-                    <option value="anual">☀️ Todo el año (Tiempos Base nominales)</option>
-                    <option value="invierno">❄️ Programa de Invierno (Aplica -50% de tiempo automático)</option>
-                </select>
-            `;
-            contenedorAsignacion.parentNode.insertBefore(wrapSelect, contenedorAsignacion);
-        }
-        document.getElementById('modal-periodo-select').value = prog.periodo || "anual";
-    }
 
     const selectorDias = document.getElementById('modal-days-selector');
     if(selectorDias) {
@@ -286,8 +270,9 @@ function abrirEditorPrograma(id) {
         });
     }
 
-    if(contenedorAsignacion) {
-        contenedorAsignacion.innerHTML = '';
+    const contenedorZonas = document.getElementById('modal-zones-assignment');
+    if(contenedorZonas) {
+        contenedorZonas.innerHTML = '';
         zonasMaestras.forEach(zMaestra => {
             const zonaEnProg = prog.zonas.find(z => z.id === zMaestra.id);
             const asignada = !!zonaEnProg;
@@ -308,11 +293,11 @@ function abrirEditorPrograma(id) {
                     <span class="time-display" id="lbl-min-prog-${zMaestra.id}" style="color:${asignada ? 'var(--success)':'#aaa'}">${minutosRiego}m</span>
                 </div>
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <span style="font-size:11px; color:#777;">Tiempo:</span>
+                    <span style="font-size:11px; color:#777;">Tiempo Nominal:</span>
                     <input type="range" min="1" max="60" value="${minutosRiego || 5}" id="slide-zona-${zMaestra.id}" ${!asignada ? 'disabled':''} style="flex-grow:1;" oninput="cambiarMinutosZonaPrograma(${zMaestra.id}, this.value)">
                 </div>
             `;
-            contenedorAsignacion.appendChild(row);
+            contenedorZonas.appendChild(row);
         });
     }
 
@@ -358,38 +343,27 @@ function cambiarMinutosZonaPrograma(idZona, valor) {
 function cerrarEditorModal() {
     document.getElementById('editor-modal-screen').style.display = 'none';
     window.tempNuevoProg = null;
-    let elem = document.getElementById('wrapper-periodo-select');
-    if(elem) elem.remove(); 
 }
 
 function guardarCambiosPrograma() {
     const name = document.getElementById('modal-nombre-prog').value;
     const time = document.getElementById('modal-start-time').value;
-    const periodValue = document.getElementById('modal-periodo-select').value;
 
     if(programaEditandoId === "NUEVO") {
         window.tempNuevoProg.nombre = name;
         window.tempNuevoProg.start_time = time;
-        window.tempNuevoProg.periodo = periodValue;
         programas.push(window.tempNuevoProg);
     } else {
         let prog = programas.find(p => p.id === programaEditandoId);
-        if(prog) { 
-            prog.nombre = name; 
-            prog.start_time = time; 
-            prog.periodo = periodValue;
-        }
+        if(prog) { prog.nombre = name; prog.start_time = time; }
     }
 
     local_guardarEstadoGlobal();
     cerrarEditorModal();
     
     let path = window.location.pathname;
-    if(path.includes("config.html")) {
-        renderizarPantallaConfiguracion();
-    } else {
-        renderizarMonitorPrincipal();
-    }
+    if(path.includes("config.html")) renderizarPantallaConfiguracion();
+    else renderizarMonitorPrincipal();
 }
 
 function eliminarPrograma(id) {
@@ -410,16 +384,10 @@ function toggleZonaManualDirecta(zonaId) {
     tiempoRestanteActual = tiempoManualGlobalConfigurado; 
     tiempoInicialAsignado = tiempoManualGlobalConfigurado; 
 
-    const hwTanque = document.getElementById('hw-tanque');
-    const hwBomba = document.getElementById('hw-bomba');
-    if(hwTanque) {
-        hwTanque.className = 'hw-badge closed';
-        hwTanque.innerHTML = `${ICONO_FLOTANTE_JPG} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
-    }
-    if(hwBomba) {
-        hwBomba.className = 'hw-badge on';
-        hwBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: RUNNING ⚡</span>`;
-    }
+    document.getElementById('hw-tanque').className = 'hw-badge closed';
+    document.getElementById('hw-tanque').innerHTML = `${ICONO_FLOTANTE_JPG} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
+    document.getElementById('hw-bomba').className = 'hw-badge on';
+    document.getElementById('hw-bomba').innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: RUNNING ⚡</span>`;
 
     arrancarBucleTiempoGenerico(false);
     renderizarMonitorPrincipal();
@@ -432,15 +400,13 @@ function lanzarProgramaDesdeMonitor(idProg) {
 
     sistemaEstado = 'riego_auto';
     
-    // Mapeo dinámico aplicando reducción por invierno si corresponde
-    let esInvierno = (prog.periodo === 'invierno');
+    // FACTOR HUNTER APLICADO: Carga la cola con los minutos escalados según la estación
     listaZonasPrioridad = prog.zonas.map(z => {
         return {
             id: z.id,
-            min: esInvierno ? Math.max(1, Math.round(z.min / 2)) : z.min
+            min: Math.max(1, Math.round(z.min * (ajusteEstacionalHunter / 100)))
         };
     });
-    
     avanzarCicloAutomaticoMulti();
 }
 
@@ -451,16 +417,10 @@ function avanzarCicloAutomaticoMulti() {
         tiempoRestanteActual = proximaZona.min;
         tiempoInicialAsignado = proximaZona.min;
 
-        const hwTanque = document.getElementById('hw-tanque');
-        const hwBomba = document.getElementById('hw-bomba');
-        if(hwTanque) {
-            hwTanque.className = 'hw-badge closed';
-            hwTanque.innerHTML = `${ICONO_FLOTANTE_JPG} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
-        }
-        if(hwBomba) {
-            hwBomba.className = 'hw-badge on';
-            hwBomba.innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: RUNNING ⚡</span>`;
-        }
+        document.getElementById('hw-tanque').className = 'hw-badge closed';
+        document.getElementById('hw-tanque').innerHTML = `${ICONO_FLOTANTE_JPG} <span>VALV. TANQUE: CERRADA (NC) 🔴</span>`;
+        document.getElementById('hw-bomba').className = 'hw-badge on';
+        document.getElementById('hw-bomba').innerHTML = `${ICONO_BOMBA_JPG} <span>BOMBA: RUNNING ⚡</span>`;
 
         arrancarBucleTiempoGenerico(true);
         renderizarMonitorPrincipal();
@@ -680,6 +640,13 @@ function forzarParadaTotal() {
         sliderDisplay.innerText = tiempoManualGlobalConfigurado + "m";
     }
 
+    const hunterInput = document.getElementById('input-hunter-estacional');
+    const hunterDisplay = document.getElementById('display-hunter-estacional');
+    if(hunterInput && hunterDisplay) {
+        hunterInput.value = ajusteEstacionalHunter;
+        hunterDisplay.innerText = ajusteEstacionalHunter + "%";
+    }
+
     actualizarFechaHoy();
     let path = window.location.pathname;
     if(path.includes("config.html")) renderizarPantallaConfiguracion();
@@ -691,9 +658,10 @@ function enviarConfiguracionFlashESP32() {
         comando: "guardar_config_maestra",
         build: CONFIG_VERSION,
         timeout_tanque: timeoutTanqueConfigurado,
+        ajuste_estacional_hunter: ajusteEstacionalHunter,
         programas: programas
     };
     console.log("JSON Maestro enviado hacia el LittleFS del ESP32:", JSON.stringify(payload, null, 2));
-    alert("🚀 ¡Configuración estacional y de programas sincronizada con el ESP32!");
+    alert("🚀 ¡Ajuste estacional Hunter y programas sincronizados con el ESP32!");
     navegarHacia("monitor.html");
 }
