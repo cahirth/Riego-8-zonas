@@ -222,11 +222,11 @@ body {
   background: var(--c-surface);
   border: 1px solid var(--c-border);
   border-radius: var(--r);
-  padding: 18px 10px 14px;
+  padding: 12px 8px 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 4px;
   cursor: pointer;
   font-family: inherit;
   color: var(--c-text);
@@ -240,8 +240,10 @@ body {
   background: rgba(0,102,204,.15);
   box-shadow: 0 0 0 2px rgba(0,102,204,.3);
 }
-.zone-btn .z-icon { width: 40px; height: 40px; }
-.zone-btn .z-icon svg { width: 40px; height: 40px; }
+.zone-btn .z-icon { width: 40px; height: 26px; }
+.zone-btn .z-icon svg { width: 40px; height: 26px; }
+.zone-btn .z-valve { width: 44px; height: 28px; margin-top: 2px; }
+.zone-btn .z-valve svg { width: 44px; height: 28px; }
 .zone-btn .z-num  {
   font-size: 11px;
   font-weight: 700;
@@ -378,9 +380,11 @@ input[type=range]::-webkit-slider-thumb {
   .hw-icon svg   { width: 20px; height: 20px; }
   .cmd-row       { flex-direction: column; }
   .cmd-btn       { min-width: unset; }
-  .zone-btn      { padding: 14px 6px 10px; }
-  .zone-btn .z-icon { width: 32px; height: 32px; }
-  .zone-btn .z-icon svg { width: 32px; height: 32px; }
+  .zone-btn      { padding: 10px 4px 8px; gap: 3px; }
+  .zone-btn .z-icon  { width: 32px; height: 20px; }
+  .zone-btn .z-icon svg { width: 32px; height: 20px; }
+  .zone-btn .z-valve { width: 36px; height: 22px; }
+  .zone-btn .z-valve svg { width: 36px; height: 22px; }
 }
 </style>
 </head>
@@ -394,7 +398,7 @@ input[type=range]::-webkit-slider-thumb {
     </div>
     <div>
       <div class="hdr-title">Riego Hidráulico TLC</div>
-      <div class="hdr-sub">Panel de Monitoreo</div>
+      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v1.2</span></div>
     </div>
   </div>
   <a href="config.html" class="btn-cfg">
@@ -596,24 +600,61 @@ function renderZonas() {
   if (!grid) return;
   grid.innerHTML = "";
   for (let z = 1; z <= 8; z++) {
+    const activo = TLC.zonaActiva === z;
+    const cAsp   = activo ? "#0066CC" : "#6B8BAE";   // color aspersor
+    const cAgua  = activo ? "#00C896" : "#3A5F80";   // color agua
+    const cValv  = activo ? "#00C896" : "#2A5070";   // color cuerpo válvula
+    const cBob   = activo ? "#064A2A" : "#1A3050";   // color bobina
+    const cLine  = activo ? "#00C896" : "#3A5F80";   // color espiras
     const btn = document.createElement("button");
-    btn.className = "zone-btn" + (TLC.zonaActiva === z ? " active" : "");
+    btn.className = "zone-btn" + (activo ? " active" : "");
     btn.id = "zone-btn-" + z;
-    btn.innerHTML = `
-      <div class="zone-active-ring"></div>
-      <div class="z-icon">
-        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="20" cy="28" r="5" stroke="${TLC.zonaActiva===z ? '#0066CC' : '#6B8BAE'}" stroke-width="1.5"/>
-          <line x1="20" y1="23" x2="20" y2="14" stroke="${TLC.zonaActiva===z ? '#0066CC' : '#6B8BAE'}" stroke-width="1.5" stroke-linecap="round"/>
-          <path d="M20 14 C17 10 12 9 10 6" stroke="${TLC.zonaActiva===z ? '#00C896' : '#3A5F80'}" stroke-width="1.4" stroke-linecap="round"/>
-          <path d="M20 14 C21 9 25 7 28 5" stroke="${TLC.zonaActiva===z ? '#00C896' : '#3A5F80'}" stroke-width="1.4" stroke-linecap="round"/>
-          <path d="M20 14 C20 9 20 7 20 5"  stroke="${TLC.zonaActiva===z ? '#00C896' : '#3A5F80'}" stroke-width="1.4" stroke-linecap="round"/>
-          <circle cx="10" cy="6"  r="1.5" fill="${TLC.zonaActiva===z ? '#00C896' : '#3A5F80'}"/>
-          <circle cx="28" cy="5"  r="1.5" fill="${TLC.zonaActiva===z ? '#00C896' : '#3A5F80'}"/>
-          <circle cx="20" cy="5"  r="1.5" fill="${TLC.zonaActiva===z ? '#00C896' : '#3A5F80'}"/>
-        </svg>
-      </div>
-      <div class="z-num">ZONA ${z}</div>`;
+    btn.innerHTML =
+      "<div class='zone-active-ring'></div>" +
+
+      // ── Aspersor (arriba) ──
+      "<div class='z-icon'>" +
+        "<svg viewBox='0 0 40 26' fill='none' xmlns='http://www.w3.org/2000/svg'>" +
+          "<circle cx='20' cy='20' r='5' stroke='" + cAsp + "' stroke-width='1.5'/>" +
+          "<line x1='20' y1='15' x2='20' y2='8' stroke='" + cAsp + "' stroke-width='1.5' stroke-linecap='round'/>" +
+          "<path d='M20 8 C17 5 13 4 11 2'  stroke='" + cAgua + "' stroke-width='1.4' stroke-linecap='round'/>" +
+          "<path d='M20 8 C21 4 25 3 28 1'  stroke='" + cAgua + "' stroke-width='1.4' stroke-linecap='round'/>" +
+          "<path d='M20 8 C20 4 20 2 20 0'  stroke='" + cAgua + "' stroke-width='1.4' stroke-linecap='round'/>" +
+          "<circle cx='11' cy='2'  r='1.4' fill='" + cAgua + "'/>" +
+          "<circle cx='28' cy='1'  r='1.4' fill='" + cAgua + "'/>" +
+          "<circle cx='20' cy='0'  r='1.4' fill='" + cAgua + "'/>" +
+        "</svg>" +
+      "</div>" +
+
+      // ── Electroválvula solenoide (abajo) ──
+      "<div class='z-valve'>" +
+        "<svg viewBox='0 0 44 28' fill='none' xmlns='http://www.w3.org/2000/svg'>" +
+          // Cuerpo de la válvula
+          "<rect x='7' y='14' width='30' height='10' rx='2' fill='#0D1B2A' stroke='" + cValv + "' stroke-width='1.3'/>" +
+          // Puertos izq/der
+          "<rect x='1'  y='16' width='7'  height='6' rx='1' fill='#0D1B2A' stroke='" + cValv + "' stroke-width='1'/>" +
+          "<rect x='36' y='16' width='7'  height='6' rx='1' fill='#0D1B2A' stroke='" + cValv + "' stroke-width='1'/>" +
+          // Bobina solenoide
+          "<rect x='15' y='4' width='14' height='11' rx='1.5' fill='" + cBob + "' stroke='" + cValv + "' stroke-width='1.3'/>" +
+          // Espiras de la bobina
+          "<line x1='16.5' y1='7'  x2='27.5' y2='7'  stroke='" + cLine + "' stroke-width='0.9'/>" +
+          "<line x1='16.5' y1='9.5' x2='27.5' y2='9.5' stroke='" + cLine + "' stroke-width='0.9'/>" +
+          "<line x1='16.5' y1='12' x2='27.5' y2='12' stroke='" + cLine + "' stroke-width='0.9'/>" +
+          // Vástago
+          "<rect x='20' y='14' width='4' height='3' fill='" + cValv + "'/>" +
+          // Conector DIN
+          "<rect x='18' y='1' width='8' height='5' rx='1' fill='#0D2A3A' stroke='" + cValv + "' stroke-width='1'/>" +
+          "<circle cx='20.5' cy='3.5' r='0.9' fill='" + cLine + "'/>" +
+          "<circle cx='23.5' cy='3.5' r='0.9' fill='" + cLine + "'/>" +
+          // Estado: punto indicador derecha del cuerpo
+          (activo
+            ? "<circle cx='38' cy='19' r='2.5' fill='#00C896'/>"
+            : "<circle cx='38' cy='19' r='2.5' fill='#EF4444' opacity='0.7'/>") +
+        "</svg>" +
+      "</div>" +
+
+      "<div class='z-num'>ZONA " + z + "</div>";
+
     btn.addEventListener("click", () => activarZonaManual(z));
     grid.appendChild(btn);
   }
