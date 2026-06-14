@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TLC Riego — Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+/* ── TOKENS ── */
+:root {
+  --c-bg:        #0D1B2A;
+  --c-surface:   #132236;
+  --c-border:    #1E3550;
+  --c-cobalt:    #0066CC;
+  --c-cobalt-h:  #0052A3;
+  --c-green:     #00C896;
+  --c-green-h:   #00A87E;
+  --c-amber:     #F59E0B;
+  --c-red:       #EF4444;
+  --c-purple:    #7C3AED;
+  --c-purple-h:  #6D28D9;
+  --c-text:      #E2EBF5;
+  --c-muted:     #6B8BAE;
+  --c-mono:      'JetBrains Mono', monospace;
+  --r:           10px;
+  --r-sm:        6px;
+  --shadow:      0 2px 12px rgba(0,0,0,.4);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ── HEADER ── */
+.hdr {
+  background: linear-gradient(135deg, #0A1628 0%, #0F2040 100%);
+  border-bottom: 1px solid var(--c-border);
+  padding: 0 20px;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.hdr-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hdr-icon {
+  width: 32px; height: 32px;
+  background: var(--c-cobalt);
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+}
+.hdr-icon svg { width: 18px; height: 18px; fill: none; stroke: #fff; stroke-width: 2; }
+.hdr-title { font-size: 15px; font-weight: 700; letter-spacing: .4px; }
+.hdr-sub   { font-size: 11px; color: var(--c-muted); font-weight: 500; }
+.btn-cfg {
+  background: rgba(255,255,255,.06);
+  border: 1px solid var(--c-border);
+  color: var(--c-text);
+  border-radius: var(--r-sm);
+  padding: 7px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background .2s;
+}
+.btn-cfg:hover { background: rgba(255,255,255,.12); }
+
+/* ── LAYOUT ── */
+.main { max-width: 900px; margin: 0 auto; padding: 20px 16px 40px; display: flex; flex-direction: column; gap: 18px; }
+
+/* ── BANNER DE ESTADO ── */
+.status-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: var(--shadow);
+}
+.status-row1 { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.status-date { font-size: 12px; color: var(--c-muted); font-family: var(--c-mono); }
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  padding: 5px 14px;
+  border-radius: 20px;
+  background: rgba(107,139,174,.1);
+  border: 1px solid rgba(107,139,174,.2);
+  color: var(--c-muted);
+}
+.status-badge.standby  { background: rgba(107,139,174,.1); color: var(--c-muted); }
+.status-badge.manual   { background: rgba(0,200,150,.1);   color: var(--c-green);  border-color: rgba(0,200,150,.3); }
+.status-badge.llenando { background: rgba(245,158,11,.1);  color: var(--c-amber);  border-color: rgba(245,158,11,.3); }
+.pulse-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: currentColor;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+
+/* Timer + barra */
+.timer-block { display: none; flex-direction: column; gap: 6px; }
+.timer-block.visible { display: flex; }
+.timer-row { display: flex; align-items: baseline; gap: 10px; }
+.timer-val { font-family: var(--c-mono); font-size: 28px; font-weight: 600; color: var(--c-cobalt); }
+.timer-label { font-size: 12px; color: var(--c-muted); }
+.progress-track {
+  width: 100%; height: 6px;
+  background: rgba(255,255,255,.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--c-cobalt) 0%, var(--c-green) 100%);
+  border-radius: 3px;
+  transition: width .9s linear;
+}
+
+/* ── HW BADGES ── */
+.section-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--c-muted);
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--c-border);
+}
+.hw-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.hw-badge {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r);
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  box-shadow: var(--shadow);
+  transition: border-color .3s;
+}
+.hw-badge.active   { border-color: var(--c-green);  }
+.hw-badge.alert    { border-color: var(--c-amber);  }
+.hw-badge.inactive { border-color: var(--c-border); }
+.hw-icon {
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: rgba(255,255,255,.04);
+}
+.hw-icon svg { width: 26px; height: 26px; }
+.hw-name  { font-size: 11px; color: var(--c-muted); text-align: center; font-weight: 500; }
+.hw-state { font-size: 12px; font-weight: 700; font-family: var(--c-mono); text-align: center; }
+.hw-badge.active   .hw-state { color: var(--c-green); }
+.hw-badge.alert    .hw-state { color: var(--c-amber); }
+.hw-badge.inactive .hw-state { color: var(--c-muted); }
+
+/* ── BOTONERA DE COMANDOS ── */
+.cmd-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.cmd-btn {
+  flex: 1;
+  min-width: 130px;
+  padding: 11px 16px;
+  border: none;
+  border-radius: var(--r-sm);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: filter .2s, transform .1s;
+}
+.cmd-btn:active { transform: scale(.97); }
+.cmd-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+.cmd-sync   { background: var(--c-green);  color: #031a12; }
+.cmd-sync:hover   { filter: brightness(1.1); }
+.cmd-fill   { background: var(--c-purple); color: #fff; }
+.cmd-fill:hover   { filter: brightness(1.15); }
+.cmd-sim    { background: var(--c-amber);  color: #1a0e00; }
+.cmd-sim:hover    { filter: brightness(1.1); }
+
+/* ── GRILLA DE ZONAS ── */
+.zones-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.zone-btn {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r);
+  padding: 18px 10px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--c-text);
+  transition: border-color .2s, background .2s, transform .1s;
+  position: relative;
+}
+.zone-btn:hover   { border-color: var(--c-cobalt); background: rgba(0,102,204,.07); }
+.zone-btn:active  { transform: scale(.96); }
+.zone-btn.active  {
+  border-color: var(--c-cobalt);
+  background: rgba(0,102,204,.15);
+  box-shadow: 0 0 0 2px rgba(0,102,204,.3);
+}
+.zone-btn .z-icon { width: 40px; height: 40px; }
+.zone-btn .z-icon svg { width: 40px; height: 40px; }
+.zone-btn .z-num  {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  color: var(--c-muted);
+}
+.zone-btn.active .z-num { color: var(--c-cobalt); }
+.zone-active-ring {
+  position: absolute;
+  top: 6px; right: 6px;
+  width: 8px; height: 8px;
+  background: var(--c-green);
+  border-radius: 50%;
+  animation: pulse 1.2s infinite;
+  display: none;
+}
+.zone-btn.active .zone-active-ring { display: block; }
+
+/* ── TIEMPO MANUAL ── */
+.manual-time-card {
+  background: rgba(0,102,204,.07);
+  border: 1px solid rgba(0,102,204,.2);
+  border-radius: var(--r);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.manual-time-label { font-size: 13px; color: var(--c-muted); font-weight: 500; flex-shrink: 0; }
+.manual-time-val {
+  font-family: var(--c-mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--c-cobalt);
+  min-width: 46px;
+  text-align: center;
+}
+input[type=range] {
+  flex: 1;
+  min-width: 120px;
+  -webkit-appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,.1);
+  outline: none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--c-cobalt);
+  cursor: pointer;
+  border: 2px solid #0D1B2A;
+  box-shadow: 0 0 0 2px rgba(0,102,204,.3);
+}
+
+/* ── PROGRAMAS ── */
+.prog-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow);
+}
+.prog-head { display: flex; align-items: center; justify-content: space-between; }
+.prog-name { font-size: 15px; font-weight: 700; }
+.prog-meta { font-size: 12px; color: var(--c-muted); margin-top: 2px; }
+.btn-exec {
+  background: var(--c-cobalt);
+  color: #fff;
+  border: none;
+  border-radius: var(--r-sm);
+  padding: 8px 16px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: filter .2s;
+}
+.btn-exec:hover { filter: brightness(1.15); }
+.prog-zonas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.zona-chip {
+  font-size: 11px;
+  font-family: var(--c-mono);
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  padding: 3px 8px;
+  color: var(--c-text);
+}
+.zona-chip.zero { color: var(--c-muted); opacity: .5; }
+
+/* ── TOAST ── */
+.tlc-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #1E3550;
+  color: var(--c-text);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity .25s, transform .25s;
+  pointer-events: none;
+  z-index: 999;
+}
+.tlc-toast--visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+.tlc-toast--success { border-color: var(--c-green); color: var(--c-green); }
+.tlc-toast--error   { border-color: var(--c-red);   color: var(--c-red);   }
+.tlc-toast--warning { border-color: var(--c-amber);  color: var(--c-amber); }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 600px) {
+  .hw-grid       { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .zones-grid    { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .hw-badge      { padding: 12px 8px; gap: 7px; }
+  .hw-icon       { width: 36px; height: 36px; }
+  .hw-icon svg   { width: 20px; height: 20px; }
+  .cmd-row       { flex-direction: column; }
+  .cmd-btn       { min-width: unset; }
+  .zone-btn      { padding: 14px 6px 10px; }
+  .zone-btn .z-icon { width: 32px; height: 32px; }
+  .zone-btn .z-icon svg { width: 32px; height: 32px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header class="hdr">
+  <div class="hdr-brand">
+    <div class="hdr-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" fill="white"/></svg>
+    </div>
+    <div>
+      <div class="hdr-title">Riego Hidráulico TLC</div>
+      <div class="hdr-sub">Panel de Monitoreo</div>
+    </div>
+  </div>
+  <a href="config.html" class="btn-cfg">
+    <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8">
+      <circle cx="10" cy="10" r="2.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42"/>
+    </svg>
+    Ajustes
+  </a>
+</header>
+
+<!-- ── CONTENIDO ── -->
+<main class="main">
+
+  <!-- BANNER DE ESTADO -->
+  <div class="status-card">
+    <div class="status-row1">
+      <div class="status-date" id="fecha-hoy">—</div>
+      <div class="status-badge standby" id="status-badge">
+        <span class="pulse-dot" id="pulse-dot" style="display:none"></span>
+        <span id="status-text">STANDBY</span>
+      </div>
+    </div>
+    <div class="timer-block" id="timer-block">
+      <div class="timer-row">
+        <span class="timer-val" id="timer-val">00:00</span>
+        <span class="timer-label" id="timer-label">restante</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill" style="width:100%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIAGNÓSTICO HW -->
+  <div>
+    <div class="section-title">Diagnóstico de Hardware</div>
+    <div class="hw-grid" style="margin-top:12px;">
+
+      <!-- Flotante -->
+      <div class="hw-badge inactive" id="badge-flotante">
+        <div class="hw-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="3"/>
+            <path d="M12 11v10"/>
+            <path d="M8 17c0 0 1.5 2 4 2s4-2 4-2"/>
+            <ellipse cx="12" cy="5" rx="5" ry="2" stroke-dasharray="2 1"/>
+          </svg>
+        </div>
+        <div class="hw-name">Flotante Boya</div>
+        <div class="hw-state" id="fl-state">TANQUE OK</div>
+      </div>
+
+      <!-- Válvula Tanque -->
+      <div class="hw-badge inactive" id="badge-valvula">
+        <div class="hw-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12h16"/>
+            <path d="M9 7l3 5 3-5"/>
+            <path d="M9 17l3-5 3 5"/>
+            <circle cx="12" cy="12" r="2"/>
+          </svg>
+        </div>
+        <div class="hw-name">Válvula Tanque</div>
+        <div class="hw-state" id="vv-state">CERRADA</div>
+      </div>
+
+      <!-- Bomba -->
+      <div class="hw-badge inactive" id="badge-bomba">
+        <div class="hw-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+          </svg>
+        </div>
+        <div class="hw-name">Bomba Centrífuga</div>
+        <div class="hw-state" id="bm-state">OFF</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- COMANDOS -->
+  <div>
+    <div class="section-title">Comandos de Control</div>
+    <div class="cmd-row" style="margin-top:12px;">
+      <button class="cmd-btn cmd-sync" onclick="sincronizarFlash()">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10a6 6 0 0112 0"/><path d="M16 10a6 6 0 01-12 0"/><polyline points="14,7 16,10 13,10"/><polyline points="6,13 4,10 7,10"/></svg>
+        Sincro Flash
+      </button>
+      <button class="cmd-btn cmd-fill" onclick="forzarLlenadoManual()">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="14" height="10" rx="2"/><path d="M7 8V5a5 5 0 0110 0v3"/><path d="M10 12v3"/></svg>
+        Llenar Tanque
+      </button>
+      <button class="cmd-btn cmd-sim" onclick="simularFlotante()">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v14M3 10h14"/><circle cx="10" cy="10" r="3" stroke-dasharray="2 1.5"/></svg>
+        Simular Tanque
+      </button>
+    </div>
+  </div>
+
+  <!-- GRILLA DE ZONAS -->
+  <div>
+    <div class="section-title">Zonas Físicas del Colector — Prueba Manual Directa</div>
+    <div class="zones-grid" style="margin-top:12px;" id="zones-grid">
+      <!-- generado por JS -->
+    </div>
+  </div>
+
+  <!-- TIEMPO MANUAL -->
+  <div class="manual-time-card">
+    <div class="manual-time-label">Tiempo Activación Manual</div>
+    <input type="range" id="slider-manual" min="1" max="60" value="10"
+      oninput="TLC.tiempoManualGlobalConfigurado=+this.value; document.getElementById('manual-time-disp').textContent=this.value+'m'; guardarEstado()"/>
+    <div class="manual-time-val" id="manual-time-disp">10m</div>
+  </div>
+
+  <!-- PROGRAMAS AUTOMÁTICOS -->
+  <div>
+    <div class="section-title" id="prog-title">Programas Automáticos — Ajuste Estacional TLC: 100%</div>
+    <div style="margin-top:12px; display:flex; flex-direction:column; gap:10px;" id="progs-list">
+      <!-- generado por JS -->
+    </div>
+  </div>
+
+</main>
+
+<div class="tlc-toast" id="tlc-toast"></div>
+
+<script src="app.js"></script>
+<script>
+// ── RENDER MONITOR ──────────────────────────────────────────
+
+function renderFecha() {
+  const d = new Date();
+  const dias = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  const meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  document.getElementById("fecha-hoy").textContent =
+    dias[d.getDay()] + ", " + d.getDate() + " de " + meses[d.getMonth()] + " " + d.getFullYear();
+}
+
+function renderZonas() {
+  const grid = document.getElementById("zones-grid");
+  if (!grid) return;
+  grid.innerHTML = "";
+  for (let z = 1; z <= 8; z++) {
+    const btn = document.createElement("button");
+    btn.className = "zone-btn" + (TLC.zonaActiva === z ? " active" : "");
+    btn.id = "zone-btn-" + z;
+    btn.innerHTML = `
+      <div class="zone-active-ring"></div>
+      <div class="z-icon">
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="28" r="5" stroke="${TLC.zonaActiva===z ? '#0066CC' : '#6B8BAE'}" stroke-width="1.5"/>
+          <line x1="20" y1="23" x2="20" y2="14" stroke="${TLC.zonaActiva===z ? '#0066CC' : '#6B8BAE'}" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M20 14 C17 10 12 9 10 6" stroke="${TLC.zonaActiva===z ? '#00C896' : '#3A5F80'}" stroke-width="1.4" stroke-linecap="round"/>
+          <path d="M20 14 C21 9 25 7 28 5" stroke="${TLC.zonaActiva===z ? '#00C896' : '#3A5F80'}" stroke-width="1.4" stroke-linecap="round"/>
+          <path d="M20 14 C20 9 20 7 20 5"  stroke="${TLC.zonaActiva===z ? '#00C896' : '#3A5F80'}" stroke-width="1.4" stroke-linecap="round"/>
+          <circle cx="10" cy="6"  r="1.5" fill="${TLC.zonaActiva===z ? '#00C896' : '#3A5F80'}"/>
+          <circle cx="28" cy="5"  r="1.5" fill="${TLC.zonaActiva===z ? '#00C896' : '#3A5F80'}"/>
+          <circle cx="20" cy="5"  r="1.5" fill="${TLC.zonaActiva===z ? '#00C896' : '#3A5F80'}"/>
+        </svg>
+      </div>
+      <div class="z-num">ZONA ${z}</div>`;
+    btn.addEventListener("click", () => activarZonaManual(z));
+    grid.appendChild(btn);
+  }
+}
+
+function renderProgramas() {
+  const title = document.getElementById("prog-title");
+  if (title) title.textContent = "Programas Automáticos — Ajuste Estacional TLC: " + TLC.ajusteEstacionalTLC + "%";
+  const lista = document.getElementById("progs-list");
+  if (!lista) return;
+  lista.innerHTML = "";
+  if (TLC.programas.length === 0) {
+    lista.innerHTML = '<p style="color:var(--c-muted);font-size:13px;">Sin programas configurados. Ir a Ajustes para crear uno.</p>';
+    return;
+  }
+  TLC.programas.forEach((prog, idx) => {
+    const card = document.createElement("div");
+    card.className = "prog-card";
+    const chips = prog.zonas.map(z => {
+      const fin = minutosConAjuste(z.minutos);
+      return `<span class="zona-chip${z.minutos===0?' zero':''}">Z${z.zona}: ${fin}m</span>`;
+    }).join("");
+    card.innerHTML = `
+      <div class="prog-head">
+        <div>
+          <div class="prog-name">${prog.nombre}</div>
+          <div class="prog-meta">🕐 ${prog.horaInicio} &nbsp;|&nbsp; ${prog.dias.join(", ")}</div>
+        </div>
+        <button class="btn-exec" onclick="ejecutarPrograma(${idx})">
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M4 2l10 6-10 6V2z"/></svg>
+          Ejecutar
+        </button>
+      </div>
+      <div class="prog-zonas">${chips}</div>`;
+    lista.appendChild(card);
+  });
+}
+
+function actualizarHWBadges() {
+  // Flotante
+  const bf = document.getElementById("badge-flotante");
+  const fs = document.getElementById("fl-state");
+  if (bf && fs) {
+    if (TLC.hw.flotante === "DEMANDA") {
+      bf.className = "hw-badge alert";
+      fs.textContent = "DEMANDA ⚠️";
+    } else {
+      bf.className = "hw-badge active";
+      fs.textContent = "TANQUE OK";
+    }
+  }
+  // Válvula
+  const bv = document.getElementById("badge-valvula");
+  const vs = document.getElementById("vv-state");
+  if (bv && vs) {
+    if (TLC.hw.valvula === "ABIERTA") {
+      bv.className = "hw-badge active";
+      vs.textContent = "ABIERTA 🟢";
+    } else {
+      bv.className = "hw-badge inactive";
+      vs.textContent = "CERRADA 🔴";
+    }
+  }
+  // Bomba
+  const bb = document.getElementById("badge-bomba");
+  const bs = document.getElementById("bm-state");
+  if (bb && bs) {
+    if (TLC.hw.bomba === "RUNNING") {
+      bb.className = "hw-badge active";
+      bs.textContent = "RUNNING ⚡";
+    } else {
+      bb.className = "hw-badge inactive";
+      bs.textContent = "OFF";
+    }
+  }
+}
+
+function actualizarStatusBanner() {
+  const badge = document.getElementById("status-badge");
+  const text  = document.getElementById("status-text");
+  const dot   = document.getElementById("pulse-dot");
+  if (!badge || !text) return;
+  if (TLC.modo === "MANUAL") {
+    badge.className = "status-badge manual";
+    text.textContent = "MANUAL: ZONA " + TLC.zonaActiva + " 💧";
+    dot.style.display = "block";
+  } else if (TLC.modo === "LLENANDO" || TLC.modo === "PAUSA_TANQUE") {
+    badge.className = "status-badge llenando";
+    text.textContent = "LLENANDO TANQUE ⚠️";
+    dot.style.display = "block";
+  } else {
+    badge.className = "status-badge standby";
+    text.textContent = "STANDBY";
+    dot.style.display = "none";
+  }
+}
+
+function actualizarTimerUI() {
+  const block    = document.getElementById("timer-block");
+  const valEl    = document.getElementById("timer-val");
+  const fillEl   = document.getElementById("progress-fill");
+  const labelEl  = document.getElementById("timer-label");
+  if (!block) return;
+  const activo = TLC.modo === "MANUAL" && TLC.timerRestante > 0;
+  block.classList.toggle("visible", activo);
+  if (activo) {
+    valEl.textContent  = formatSegundos(TLC.timerRestante);
+    labelEl.textContent = "restante · Zona " + TLC.zonaActiva;
+    const pct = TLC.timerTotal > 0 ? (TLC.timerRestante / TLC.timerTotal) * 100 : 0;
+    fillEl.style.width = pct + "%";
+  }
+}
+
+function renderMonitor() {
+  actualizarStatusBanner();
+  actualizarHWBadges();
+  actualizarTimerUI();
+  renderZonas();
+  renderProgramas();
+}
+
+// ── BOOT ────────────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+  inicializarApp();
+  renderFecha();
+  // Sync slider con valor persistido
+  const sliderM = document.getElementById("slider-manual");
+  const dispM   = document.getElementById("manual-time-disp");
+  if (sliderM && dispM) {
+    sliderM.value = TLC.tiempoManualGlobalConfigurado;
+    dispM.textContent = TLC.tiempoManualGlobalConfigurado + "m";
+  }
+  renderMonitor();
+  // Refrescar fecha cada minuto
+  setInterval(renderFecha, 60000);
+});
+</script>
+</body>
+</html>

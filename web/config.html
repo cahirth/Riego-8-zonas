@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TLC Riego — Configuración</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+/* ── TOKENS ── */
+:root {
+  --c-bg:       #0D1B2A;
+  --c-surface:  #132236;
+  --c-border:   #1E3550;
+  --c-cobalt:   #0066CC;
+  --c-green:    #00C896;
+  --c-amber:    #F59E0B;
+  --c-red:      #EF4444;
+  --c-purple:   #7C3AED;
+  --c-text:     #E2EBF5;
+  --c-muted:    #6B8BAE;
+  --c-mono:     'JetBrains Mono', monospace;
+  --r:          10px;
+  --r-sm:       6px;
+  --shadow:     0 2px 12px rgba(0,0,0,.4);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ── HEADER ── */
+.hdr {
+  background: linear-gradient(135deg, #0A1628 0%, #0F2040 100%);
+  border-bottom: 1px solid var(--c-border);
+  padding: 0 20px;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.hdr-brand { display: flex; align-items: center; gap: 10px; }
+.hdr-icon {
+  width: 32px; height: 32px;
+  background: var(--c-cobalt);
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+}
+.hdr-icon svg { width: 18px; height: 18px; }
+.hdr-title { font-size: 15px; font-weight: 700; letter-spacing: .4px; }
+.hdr-sub   { font-size: 11px; color: var(--c-muted); font-weight: 500; }
+.btn-back {
+  background: rgba(255,255,255,.06);
+  border: 1px solid var(--c-border);
+  color: var(--c-text);
+  border-radius: var(--r-sm);
+  padding: 7px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background .2s;
+}
+.btn-back:hover { background: rgba(255,255,255,.12); }
+
+/* ── LAYOUT ── */
+.main { max-width: 760px; margin: 0 auto; padding: 24px 16px 60px; display: flex; flex-direction: column; gap: 24px; }
+
+/* ── SECTION CARD ── */
+.cfg-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r);
+  padding: 20px 22px;
+  box-shadow: var(--shadow);
+}
+.section-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--c-muted);
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--c-border);
+}
+.cfg-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.cfg-label  { font-size: 13px; font-weight: 500; color: var(--c-muted); flex-shrink: 0; min-width: 120px; }
+.cfg-val {
+  font-family: var(--c-mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--c-cobalt);
+  min-width: 50px;
+  text-align: right;
+}
+input[type=range] {
+  flex: 1;
+  min-width: 140px;
+  -webkit-appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,.1);
+  outline: none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--c-cobalt);
+  cursor: pointer;
+  border: 2px solid #0D1B2A;
+  box-shadow: 0 0 0 2px rgba(0,102,204,.3);
+}
+.cfg-desc { font-size: 12px; color: var(--c-muted); margin-top: 10px; line-height: 1.6; }
+
+/* ── AJUSTE ESTACIONAL PREVIEW ── */
+.estacional-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.est-chip {
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  padding: 6px 12px;
+  font-size: 12px;
+  font-family: var(--c-mono);
+}
+.est-chip .ec-label { color: var(--c-muted); }
+.est-chip .ec-base  { color: var(--c-text); }
+.est-chip .ec-arrow { color: var(--c-muted); margin: 0 4px; }
+.est-chip .ec-fin   { color: var(--c-cobalt); font-weight: 600; }
+
+/* ── CRONOGRAMAS ── */
+.prog-list { display: flex; flex-direction: column; gap: 12px; }
+.prog-item {
+  background: rgba(255,255,255,.03);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+.prog-item-head {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+.prog-item-head:hover { background: rgba(255,255,255,.04); }
+.prog-chevron {
+  width: 18px; height: 18px;
+  color: var(--c-muted);
+  transition: transform .2s;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.prog-chevron svg { width: 18px; height: 18px; }
+.prog-item.open .prog-chevron { transform: rotate(90deg); }
+.prog-item-name { font-size: 14px; font-weight: 700; flex: 1; }
+.prog-item-meta { font-size: 12px; color: var(--c-muted); }
+.prog-actions { display: flex; gap: 8px; margin-left: 8px; flex-shrink: 0; }
+.btn-edit, .btn-del {
+  border: none;
+  border-radius: var(--r-sm);
+  padding: 6px 12px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter .2s;
+  display: flex; align-items: center; gap: 5px;
+}
+.btn-edit { background: rgba(0,102,204,.15); color: var(--c-cobalt); border: 1px solid rgba(0,102,204,.3); }
+.btn-edit:hover { filter: brightness(1.2); }
+.btn-del  { background: rgba(239,68,68,.1);  color: var(--c-red);    border: 1px solid rgba(239,68,68,.2); }
+.btn-del:hover  { filter: brightness(1.2); }
+.prog-item-body { display: none; padding: 0 16px 16px; }
+.prog-item.open .prog-item-body { display: block; }
+
+/* ── GRILLA DE ZONAS EN PROGRAMA ── */
+.zona-sliders { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+.zona-row { display: flex; align-items: center; gap: 8px; }
+.zona-row label { font-size: 12px; color: var(--c-muted); min-width: 42px; }
+.zona-row input[type=range] { min-width: 80px; }
+.zona-row .zv {
+  font-family: var(--c-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-cobalt);
+  min-width: 28px;
+  text-align: right;
+}
+.prog-meta-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.field-group { display: flex; flex-direction: column; gap: 4px; }
+.field-label { font-size: 11px; color: var(--c-muted); font-weight: 600; letter-spacing: .5px; text-transform: uppercase; }
+.field-input {
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  color: var(--c-text);
+  font-family: var(--c-mono);
+  font-size: 13px;
+  padding: 7px 10px;
+  outline: none;
+  width: 100%;
+}
+.field-input:focus { border-color: var(--c-cobalt); }
+.dias-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.dia-tag {
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--c-border);
+  color: var(--c-muted);
+  user-select: none;
+  transition: all .15s;
+}
+.dia-tag.sel { background: rgba(0,102,204,.2); border-color: var(--c-cobalt); color: var(--c-cobalt); }
+.btn-save-prog {
+  margin-top: 12px;
+  background: var(--c-cobalt);
+  color: #fff;
+  border: none;
+  border-radius: var(--r-sm);
+  padding: 9px 18px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter .2s;
+}
+.btn-save-prog:hover { filter: brightness(1.15); }
+
+/* ── ADD PROGRAMA ── */
+.btn-add-prog {
+  background: rgba(0,200,150,.08);
+  border: 1px dashed rgba(0,200,150,.3);
+  color: var(--c-green);
+  border-radius: var(--r);
+  padding: 12px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background .2s;
+}
+.btn-add-prog:hover { background: rgba(0,200,150,.14); }
+
+/* ── BTN MAESTRO ── */
+.btn-master {
+  background: linear-gradient(135deg, var(--c-cobalt) 0%, #004FA3 100%);
+  color: #fff;
+  border: none;
+  border-radius: var(--r);
+  padding: 16px 24px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: filter .2s, transform .1s;
+  box-shadow: 0 4px 16px rgba(0,102,204,.3);
+}
+.btn-master:hover  { filter: brightness(1.1); }
+.btn-master:active { transform: scale(.98); }
+
+/* ── TOAST ── */
+.tlc-toast {
+  position: fixed;
+  bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #1E3550;
+  color: var(--c-text);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity .25s, transform .25s;
+  pointer-events: none;
+  z-index: 999;
+}
+.tlc-toast--visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+.tlc-toast--success { border-color: var(--c-green); color: var(--c-green); }
+.tlc-toast--error   { border-color: var(--c-red);   color: var(--c-red);   }
+.tlc-toast--warning { border-color: var(--c-amber);  color: var(--c-amber); }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 560px) {
+  .zona-sliders { grid-template-columns: 1fr; }
+  .prog-meta-fields { grid-template-columns: 1fr; }
+  .prog-actions { gap: 5px; }
+  .btn-edit, .btn-del { padding: 5px 8px; font-size: 11px; }
+  .cfg-label { min-width: unset; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header class="hdr">
+  <div class="hdr-brand">
+    <div class="hdr-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.07 4.93l-1.41 1.41M6.34 17.66l-1.41 1.41M2 12h2M20 12h2M17.66 17.66l1.41 1.41M6.34 6.34 4.93 4.93M12 2v2M12 20v2"/>
+      </svg>
+    </div>
+    <div>
+      <div class="hdr-title">Configuración TLC</div>
+      <div class="hdr-sub">Cronogramas y Ajustes</div>
+    </div>
+  </div>
+  <a href="monitor.html" class="btn-back">
+    <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4L6 8l4 4"/></svg>
+    Atrás
+  </a>
+</header>
+
+<main class="main">
+
+  <!-- AJUSTE ESTACIONAL -->
+  <div class="cfg-card">
+    <div class="section-title">Ajuste Estacional Global TLC</div>
+    <div class="cfg-row">
+      <div class="cfg-label">Porcentaje global</div>
+      <input type="range" id="slider-est" min="10" max="150" step="5" value="100"
+        oninput="onEstacionalChange(+this.value)"/>
+      <div class="cfg-val" id="est-val">100%</div>
+    </div>
+    <div class="cfg-desc">
+      Modifica en tiempo real la duración de <strong>todas las zonas</strong> en los programas automáticos. Un valor menor al 100% acorta el riego (invierno); mayor lo extiende (verano).
+    </div>
+    <div class="estacional-chips" id="est-chips"></div>
+  </div>
+
+  <!-- TIMEOUT TANQUE -->
+  <div class="cfg-card">
+    <div class="section-title">Protección Time-out de Llenado de Tanque</div>
+    <div class="cfg-row">
+      <div class="cfg-label">Tiempo máximo</div>
+      <input type="range" id="slider-timeout" min="0" max="15" step="1" value="5"
+        oninput="onTimeoutChange(+this.value)"/>
+      <div class="cfg-val" id="timeout-val">5m</div>
+    </div>
+    <div class="cfg-desc">
+      Si el flotante no detecta saturación dentro de este límite, el sistema aborta el llenado por falla crítica y emite alerta. Poner en 0 para deshabilitar.
+    </div>
+  </div>
+
+  <!-- CRONOGRAMAS -->
+  <div class="cfg-card">
+    <div class="section-title">Cronogramas en Memoria</div>
+    <div class="prog-list" id="prog-list"></div>
+    <button class="btn-add-prog" style="margin-top:14px;" onclick="agregarNuevoPrograma()">
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg>
+      Nuevo Programa
+    </button>
+  </div>
+
+  <!-- GUARDAR MAESTRO -->
+  <button class="btn-master" onclick="guardarYSincronizar()">
+    <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 10a6 6 0 0112 0"/><path d="M16 10a6 6 0 01-12 0"/>
+      <polyline points="14,7 16,10 13,10"/><polyline points="6,13 4,10 7,10"/>
+    </svg>
+    Sincronizar Configuración TLC
+  </button>
+
+</main>
+
+<div class="tlc-toast" id="tlc-toast"></div>
+
+<script src="app.js"></script>
+<script>
+const DIAS_SEM = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+
+// ── AJUSTE ESTACIONAL ────────────────────────────────────────
+function onEstacionalChange(val) {
+  TLC.ajusteEstacionalTLC = val;
+  document.getElementById("est-val").textContent = val + "%";
+  renderEstacionalChips();
+}
+
+function renderEstacionalChips() {
+  const cont = document.getElementById("est-chips");
+  if (!cont) return;
+  cont.innerHTML = "";
+  TLC.programas.forEach(prog => {
+    prog.zonas.forEach(z => {
+      if (z.minutos === 0) return;
+      const fin = minutosConAjuste(z.minutos);
+      const chip = document.createElement("div");
+      chip.className = "est-chip";
+      chip.innerHTML = `<span class="ec-label">${prog.nombre} Z${z.zona}: </span>
+        <span class="ec-base">${z.minutos}m</span>
+        <span class="ec-arrow">→</span>
+        <span class="ec-fin">${fin}m</span>`;
+      cont.appendChild(chip);
+    });
+  });
+}
+
+// ── TIMEOUT TANQUE ───────────────────────────────────────────
+function onTimeoutChange(val) {
+  TLC.timeoutTanqueConfigurado = val;
+  document.getElementById("timeout-val").textContent = val === 0 ? "OFF" : val + "m";
+}
+
+// ── RENDER PROGRAMAS ─────────────────────────────────────────
+function renderProgList() {
+  const lista = document.getElementById("prog-list");
+  if (!lista) return;
+  lista.innerHTML = "";
+  if (TLC.programas.length === 0) {
+    lista.innerHTML = '<p style="color:var(--c-muted);font-size:13px;">Sin programas. Presioná "Nuevo Programa".</p>';
+    return;
+  }
+  TLC.programas.forEach((prog, idx) => {
+    const item = document.createElement("div");
+    item.className = "prog-item";
+    item.id = "prog-item-" + idx;
+
+    // Cabecera
+    const head = document.createElement("div");
+    head.className = "prog-item-head";
+    head.innerHTML = `
+      <div>
+        <div class="prog-item-name">${prog.nombre}</div>
+        <div class="prog-item-meta">🕐 ${prog.horaInicio} &nbsp;·&nbsp; ${prog.dias.join(", ")}</div>
+      </div>
+      <div class="prog-actions">
+        <button class="btn-edit" onclick="event.stopPropagation(); toggleProgItem(${idx})">
+          <svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 2l3 3-7 7H2v-3L9 2z"/></svg>
+          Modificar
+        </button>
+        <button class="btn-del" onclick="event.stopPropagation(); eliminarPrograma(${idx})">
+          <svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="2,4 12,4"/><path d="M5 4V2h4v2"/><rect x="3" y="4" width="8" height="9" rx="1"/></svg>
+          Borrar
+        </button>
+      </div>
+      <div class="prog-chevron"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="4,2 10,7 4,12"/></svg></div>`;
+    head.addEventListener("click", () => toggleProgItem(idx));
+
+    // Cuerpo editable
+    const body = document.createElement("div");
+    body.className = "prog-item-body";
+    body.id = "prog-body-" + idx;
+
+    // Campos meta
+    const metaFields = `
+      <div class="prog-meta-fields">
+        <div class="field-group">
+          <div class="field-label">Nombre</div>
+          <input class="field-input" id="pn-${idx}" type="text" value="${prog.nombre}"/>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Hora de inicio</div>
+          <input class="field-input" id="ph-${idx}" type="time" value="${prog.horaInicio}"/>
+        </div>
+      </div>
+      <div class="field-label" style="margin-bottom:6px;">Días de la semana</div>
+      <div class="dias-row" id="dias-row-${idx}"></div>`;
+
+    // Sliders de zonas
+    let sliderHTML = '<div class="zona-sliders" style="margin-top:14px;">';
+    prog.zonas.forEach((z, zi) => {
+      sliderHTML += `
+        <div class="zona-row">
+          <label>Z${z.zona}</label>
+          <input type="range" min="0" max="30" step="1" value="${z.minutos}"
+            id="zs-${idx}-${zi}"
+            oninput="document.getElementById('zv-${idx}-${zi}').textContent=+this.value+'m'; actualizarChips()"/>
+          <div class="zv" id="zv-${idx}-${zi}">${z.minutos}m</div>
+        </div>`;
+    });
+    sliderHTML += '</div>';
+    sliderHTML += `<button class="btn-save-prog" onclick="guardarPrograma(${idx})">💾 Guardar programa</button>`;
+
+    body.innerHTML = metaFields + sliderHTML;
+    item.appendChild(head);
+    item.appendChild(body);
+    lista.appendChild(item);
+
+    // Pintar días
+    const diasRow = document.getElementById("dias-row-" + idx);
+    if (diasRow) {
+      DIAS_SEM.forEach(d => {
+        const tag = document.createElement("div");
+        tag.className = "dia-tag" + (prog.dias.includes(d) ? " sel" : "");
+        tag.textContent = d;
+        tag.addEventListener("click", () => tag.classList.toggle("sel"));
+        diasRow.appendChild(tag);
+      });
+    }
+  });
+  renderEstacionalChips();
+}
+
+function toggleProgItem(idx) {
+  const item = document.getElementById("prog-item-" + idx);
+  if (item) item.classList.toggle("open");
+}
+
+function eliminarPrograma(idx) {
+  if (!confirm("¿Eliminar el programa '" + TLC.programas[idx].nombre + "'?")) return;
+  borrarPrograma(idx);
+  renderProgList();
+  mostrarToast("🗑️ Programa eliminado.", "warning");
+}
+
+function guardarPrograma(idx) {
+  const nombre = document.getElementById("pn-" + idx);
+  const hora   = document.getElementById("ph-" + idx);
+  const diasRow = document.getElementById("dias-row-" + idx);
+  if (!nombre || !hora || !diasRow) return;
+  TLC.programas[idx].nombre    = nombre.value.trim() || TLC.programas[idx].nombre;
+  TLC.programas[idx].horaInicio = hora.value;
+  const selTags = diasRow.querySelectorAll(".dia-tag.sel");
+  TLC.programas[idx].dias = Array.from(selTags).map(t => t.textContent);
+  TLC.programas[idx].zonas.forEach((z, zi) => {
+    const sl = document.getElementById("zs-" + idx + "-" + zi);
+    if (sl) z.minutos = +sl.value;
+  });
+  guardarEstado();
+  renderProgList();
+  mostrarToast("✅ Programa guardado.", "success");
+}
+
+function agregarNuevoPrograma() {
+  agregarPrograma(
+    "Nuevo Programa",
+    "08:00",
+    ["Lun","Mié","Vie"],
+    [0,0,0,0,0,0,0,0]
+  );
+  renderProgList();
+  const idx = TLC.programas.length - 1;
+  const item = document.getElementById("prog-item-" + idx);
+  if (item) { item.classList.add("open"); item.scrollIntoView({ behavior: "smooth" }); }
+  mostrarToast("✅ Nuevo programa creado.", "success");
+}
+
+function actualizarChips() {
+  // Leer valores actuales de todos los sliders antes de guardar
+  TLC.programas.forEach((prog, idx) => {
+    prog.zonas.forEach((z, zi) => {
+      const sl = document.getElementById("zs-" + idx + "-" + zi);
+      if (sl) z.minutos = +sl.value;
+    });
+  });
+  renderEstacionalChips();
+}
+
+// ── GUARDAR Y SINCRONIZAR ────────────────────────────────────
+function guardarYSincronizar() {
+  guardarEstado();
+  sincronizarFlash();
+}
+
+// ── BOOT ────────────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+  inicializarApp();
+
+  // Sliders de config
+  const slEst = document.getElementById("slider-est");
+  const slTO  = document.getElementById("slider-timeout");
+  if (slEst) {
+    slEst.value = TLC.ajusteEstacionalTLC;
+    document.getElementById("est-val").textContent = TLC.ajusteEstacionalTLC + "%";
+  }
+  if (slTO) {
+    slTO.value = TLC.timeoutTanqueConfigurado;
+    const toEl = document.getElementById("timeout-val");
+    if (toEl) toEl.textContent = TLC.timeoutTanqueConfigurado === 0 ? "OFF" : TLC.timeoutTanqueConfigurado + "m";
+  }
+  renderProgList();
+});
+</script>
+</body>
+</html>
