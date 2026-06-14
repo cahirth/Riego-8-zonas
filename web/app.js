@@ -1,6 +1,7 @@
 // ============================================================
-//  TLC RIEGO HIDRÁULICO — app.js  v1.0
+//  TLC RIEGO HIDRÁULICO — app.js  v1.1
 //  Motor de lógica, estado global y comunicación ESP32
+//  v1.1: Mock offline automático — funciona sin ESP32 conectado
 // ============================================================
 
 "use strict";
@@ -10,28 +11,50 @@ const STORAGE_KEY   = "TLC_RIEGO_MULTI_DATA";
 const ESP32_URL     = "";          // Vacío → usa misma IP (útil en LittleFS)
 const POLL_INTERVAL = 2000;        // ms entre polling de estado al ESP32
 
+// ─── MOCK OFFLINE ─────────────────────────────────────────────
+// Cuando el ESP32 no está disponible, todas las llamadas a la red
+// son interceptadas y respondidas con el estado interno de TLC.
+// Al conectar el ESP32 real, esta capa se bypasea automáticamente.
+const MOCK = {
+  activo: false,   // se activa en el primer fallo de fetch
+
+  // Simula la respuesta de /api/status reflejando el estado interno
+  status() {
+    return { flotante: TLC.hw.flotante, valvula: TLC.hw.valvula, bomba: TLC.hw.bomba };
+  },
+
+  // Simula comandos: los aplica directamente al estado interno
+  comando(endpoint, payload) {
+    if (endpoint === "/api/zona")   console.info("[MOCK] Abrir zona", payload.zona);
+    if (endpoint === "/api/zonas")  console.info("[MOCK] Cerrar todas las zonas");
+    if (endpoint === "/api/bomba")  console.info("[MOCK] Bomba →", payload.accion);
+    if (endpoint === "/api/valvula") console.info("[MOCK] Válvula →", payload.accion);
+    if (endpoint === "/api/sync")   console.info("[MOCK] Sync flash (ignorado en modo offline)");
+    return { ok: true, mock: true };
+  },
+};
+
 // ─── ESTADO GLOBAL ───────────────────────────────────────────
 let TLC = {
   // Persistido en localStorage
   programas: [],
-  timeoutTanqueConfigurado: 5,     // minutos
+  timeoutTanqueConfigurado: 5,
   tiempoManualGlobalConfigurado: 10,
-  ajusteEstacionalTLC: 100,        // porcentaje
+  ajusteEstacionalTLC: 100,
 
   // Estado en tiempo real (NO persistido)
   hw: {
-    flotante:  "OK",          // "OK" | "DEMANDA"
-    valvula:   "CERRADA",     // "CERRADA" | "ABIERTA"
-    bomba:     "OFF",         // "OFF" | "RUNNING"
+    flotante: "OK",       // "OK" | "DEMANDA"
+    valvula:  "CERRADA",  // "CERRADA" | "ABIERTA"
+    bomba:    "OFF",      // "OFF" | "RUNNING"
   },
-  modo:          "STANDBY",   // "STANDBY" | "MANUAL" | "LLENANDO" | "PAUSA_TANQUE"
-  zonaActiva:    null,        // 1-8 o null
-  zonaAnterior:  null,        // para retorno tras llenado
-  timerRestante: 0,           // segundos
+  modo:          "STANDBY",
+  zonaActiva:    null,
+  zonaAnterior:  null,
+  timerRestante: 0,
   timerTotal:    0,
-  tanqueTimer:   0,           // segundos llenando tanque
+  tanqueTimer:   0,
 
-  // Handles internos
   _cicloInterval:  null,
   _tanqueInterval: null,
   _pollInterval:   null,
@@ -40,10 +63,10 @@ let TLC = {
 // ─── PERSISTENCIA ─────────────────────────────────────────────
 function guardarEstado() {
   const datos = {
-    programas:                    TLC.programas,
-    timeoutTanqueConfigurado:     TLC.timeoutTanqueConfigurado,
+    programas:                     TLC.programas,
+    timeoutTanqueConfigurado:      TLC.timeoutTanqueConfigurado,
     tiempoManualGlobalConfigurado: TLC.tiempoManualGlobalConfigurado,
-    ajusteEstacionalTLC:          TLC.ajusteEstacionalTLC,
+    ajusteEstacionalTLC:           TLC.ajusteEstacionalTLC,
   };
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(datos)); } catch(e) {}
 }
@@ -53,63 +76,107 @@ function recuperarEstado() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
     const datos = JSON.parse(raw);
-    if (datos.programas !== undefined)                    TLC.programas                    = datos.programas;
-    if (datos.timeoutTanqueConfigurado !== undefined)     TLC.timeoutTanqueConfigurado     = datos.timeoutTanqueConfigurado;
+    if (datos.programas !== undefined)                     TLC.programas                    = datos.programas;
+    if (datos.timeoutTanqueConfigurado !== undefined)      TLC.timeoutTanqueConfigurado     = datos.timeoutTanqueConfigurado;
     if (datos.tiempoManualGlobalConfigurado !== undefined) TLC.tiempoManualGlobalConfigurado = datos.tiempoManualGlobalConfigurado;
-    if (datos.ajusteEstacionalTLC !== undefined)          TLC.ajusteEstacionalTLC          = datos.ajusteEstacionalTLC;
+    if (datos.ajusteEstacionalTLC !== undefined)           TLC.ajusteEstacionalTLC          = datos.ajusteEstacionalTLC;
   } catch(e) {}
 }
 
-// ─── COMUNICACIÓN ESP32 ───────────────────────────────────────
+// ─── COMUNICACIÓN ESP32 (con fallback mock automático) ────────
 async function enviarComando(endpoint, payload = {}) {
+  // Si ya sabemos que estamos offline, usamos el mock directamente
+  if (MOCK.activo) {
+    return MOCK.comando(endpoint, payload);
+  }
   try {
-    const url  = ESP32_URL + endpoint;
-    const resp = await fetch(url, {
+    const resp = await fetch(ESP32_URL + endpoint, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify(payload),
     });
     if (!resp.ok) throw new Error("HTTP " + resp.status);
+    MOCK.activo = false;  // ESP32 respondió → modo real
     return await resp.json();
   } catch(e) {
-    console.warn("[TLC] enviarComando falló:", endpoint, e.message);
-    return null;
+    if (!MOCK.activo) {
+      MOCK.activo = true;
+      console.warn("[TLC] ESP32 no disponible — activando modo OFFLINE/MOCK");
+      _mostrarBannerOffline(true);
+    }
+    return MOCK.comando(endpoint, payload);
   }
 }
 
 async function sincronizarFlash() {
   const payload = {
-    programas:            TLC.programas,
-    timeoutTanque:        TLC.timeoutTanqueConfigurado,
-    tiempoManual:         TLC.tiempoManualGlobalConfigurado,
-    ajusteEstacional:     TLC.ajusteEstacionalTLC,
+    programas:        TLC.programas,
+    timeoutTanque:    TLC.timeoutTanqueConfigurado,
+    tiempoManual:     TLC.tiempoManualGlobalConfigurado,
+    ajusteEstacional: TLC.ajusteEstacionalTLC,
   };
-  const ok = await enviarComando("/api/sync", payload);
-  mostrarToast(ok ? "✅ Sincronización exitosa" : "❌ Error de comunicación", ok ? "success" : "error");
+  const res = await enviarComando("/api/sync", payload);
+  if (MOCK.activo) {
+    mostrarToast("💾 Guardado local (sin ESP32 conectado)", "warning");
+  } else {
+    mostrarToast(res ? "✅ Sincronización exitosa" : "❌ Error de comunicación", res ? "success" : "error");
+  }
 }
 
 async function pollEstadoHW() {
+  if (MOCK.activo) {
+    // En modo offline los badges reflejan el estado interno directamente
+    if (typeof actualizarHWBadges === "function") actualizarHWBadges();
+    return;
+  }
   try {
     const resp = await fetch(ESP32_URL + "/api/status");
-    if (!resp.ok) return;
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
     const data = await resp.json();
-    if (data.flotante !== undefined)  TLC.hw.flotante = data.flotante;
-    if (data.valvula  !== undefined)  TLC.hw.valvula  = data.valvula;
-    if (data.bomba    !== undefined)  TLC.hw.bomba    = data.bomba;
+    if (data.flotante !== undefined) TLC.hw.flotante = data.flotante;
+    if (data.valvula  !== undefined) TLC.hw.valvula  = data.valvula;
+    if (data.bomba    !== undefined) TLC.hw.bomba    = data.bomba;
+    MOCK.activo = false;
+    _mostrarBannerOffline(false);
     if (typeof actualizarHWBadges === "function") actualizarHWBadges();
-  } catch(e) {/* ESP32 no responde — modo offline */}
+  } catch(e) {
+    if (!MOCK.activo) {
+      MOCK.activo = true;
+      console.warn("[TLC] ESP32 sin respuesta — modo OFFLINE");
+      _mostrarBannerOffline(true);
+    }
+    if (typeof actualizarHWBadges === "function") actualizarHWBadges();
+  }
+}
+
+// Banner discreto "OFFLINE — Sin ESP32" en el header
+function _mostrarBannerOffline(visible) {
+  let el = document.getElementById("tlc-offline-banner");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "tlc-offline-banner";
+    el.style.cssText = [
+      "position:fixed","top:58px","left:0","right:0","z-index:99",
+      "background:#7C3AED","color:#fff","font-size:11px","font-weight:600",
+      "letter-spacing:.5px","text-align:center","padding:5px 0",
+      "transition:opacity .3s","pointer-events:none",
+    ].join(";");
+    el.textContent = "⚡ MODO OFFLINE — Debug sin ESP32 conectado";
+    document.body.appendChild(el);
+  }
+  el.style.opacity = visible ? "1" : "0";
 }
 
 // ─── CONTROL DE ZONAS MANUAL ──────────────────────────────────
 function activarZonaManual(zona) {
   detenerCiclo();
-  TLC.modo       = "MANUAL";
-  TLC.zonaActiva = zona;
+  TLC.modo          = "MANUAL";
+  TLC.zonaActiva    = zona;
   TLC.timerTotal    = TLC.tiempoManualGlobalConfigurado * 60;
   TLC.timerRestante = TLC.timerTotal;
-  TLC.hw.valvula = "CERRADA";
-  TLC.hw.bomba   = "RUNNING";
-  enviarComando("/api/zona", { zona, accion: "ABRIR" });
+  TLC.hw.valvula    = "CERRADA";
+  TLC.hw.bomba      = "RUNNING";
+  enviarComando("/api/zona",  { zona, accion: "ABRIR" });
   enviarComando("/api/bomba", { accion: "ON" });
   iniciarCicloTimer();
   if (typeof renderMonitor === "function") renderMonitor();
@@ -117,15 +184,15 @@ function activarZonaManual(zona) {
 
 function detenerCiclo(silencioso = false) {
   clearInterval(TLC._cicloInterval);
-  TLC._cicloInterval  = null;
+  TLC._cicloInterval = null;
   if (!silencioso) {
-    TLC.modo         = "STANDBY";
-    TLC.zonaActiva   = null;
+    TLC.modo          = "STANDBY";
+    TLC.zonaActiva    = null;
     TLC.timerRestante = 0;
-    TLC.hw.bomba     = "OFF";
-    TLC.hw.valvula   = "CERRADA";
-    enviarComando("/api/bomba", { accion: "OFF" });
-    enviarComando("/api/zonas", { accion: "CERRAR_TODAS" });
+    TLC.hw.bomba      = "OFF";
+    TLC.hw.valvula    = "CERRADA";
+    enviarComando("/api/bomba",  { accion: "OFF" });
+    enviarComando("/api/zonas",  { accion: "CERRAR_TODAS" });
     if (typeof renderMonitor === "function") renderMonitor();
   }
 }
@@ -137,7 +204,6 @@ function iniciarCicloTimer() {
       detenerCiclo();
       return;
     }
-    // Chequeo de flotante: si demanda agua durante riego
     if (TLC.hw.flotante === "DEMANDA" && TLC.modo !== "LLENANDO" && TLC.modo !== "STANDBY") {
       iniciarLlenadoTanque(true);
       return;
@@ -155,8 +221,6 @@ function iniciarLlenadoTanque(esRetorno = false) {
   }
   TLC.modo     = "LLENANDO";
   TLC.hw.bomba = "OFF";
-
-  // Secuencia: cerrar zonas → esperar 500ms → abrir válvula → esperar 500ms → arrancar bomba
   enviarComando("/api/zonas", { accion: "CERRAR_TODAS" });
   enviarComando("/api/bomba", { accion: "OFF" });
 
@@ -177,13 +241,10 @@ function iniciarTanqueTimer() {
   clearInterval(TLC._tanqueInterval);
   TLC._tanqueInterval = setInterval(() => {
     TLC.tanqueTimer++;
-
-    // Flotante se satura: tanque lleno
     if (TLC.hw.flotante === "OK") {
       detenerLlenado(true);
       return;
     }
-    // Time-out de seguridad
     if (TLC.tanqueTimer >= TLC.timeoutTanqueConfigurado * 60) {
       detenerLlenado(false);
       mostrarToast("⚠️ TIME-OUT TANQUE: Falla crítica. Sistema detenido.", "error");
@@ -196,11 +257,10 @@ function detenerLlenado(retornar) {
   TLC._tanqueInterval = null;
   TLC.hw.bomba   = "OFF";
   TLC.hw.valvula = "CERRADA";
-  enviarComando("/api/bomba",    { accion: "OFF" });
-  enviarComando("/api/valvula",  { accion: "CERRAR" });
+  enviarComando("/api/bomba",   { accion: "OFF" });
+  enviarComando("/api/valvula", { accion: "CERRAR" });
 
   if (retornar && TLC.zonaAnterior !== null) {
-    // Retorno seguro a la zona anterior
     setTimeout(() => {
       const zona = TLC.zonaAnterior;
       TLC.zonaAnterior = null;
@@ -247,16 +307,15 @@ function ejecutarPrograma(idxPrograma) {
   const prog = TLC.programas[idxPrograma];
   if (!prog) return;
   detenerCiclo(true);
-  // Lanzar primera zona del programa
   const primeraZona = prog.zonas.findIndex(z => z.minutos > 0);
   if (primeraZona === -1) { mostrarToast("El programa no tiene zonas configuradas.", "warning"); return; }
   const minutosFinales = Math.round(prog.zonas[primeraZona].minutos * (TLC.ajusteEstacionalTLC / 100));
-  TLC.modo         = "MANUAL";
-  TLC.zonaActiva   = primeraZona + 1;
+  TLC.modo          = "MANUAL";
+  TLC.zonaActiva    = primeraZona + 1;
   TLC.timerTotal    = minutosFinales * 60;
   TLC.timerRestante = TLC.timerTotal;
-  TLC.hw.bomba     = "RUNNING";
-  TLC.hw.valvula   = "CERRADA";
+  TLC.hw.bomba      = "RUNNING";
+  TLC.hw.valvula    = "CERRADA";
   enviarComando("/api/zona",  { zona: primeraZona + 1, accion: "ABRIR" });
   enviarComando("/api/bomba", { accion: "ON" });
   iniciarCicloTimer();
@@ -304,7 +363,6 @@ function mostrarToast(msg, tipo = "info") {
 function inicializarApp() {
   recuperarEstado();
 
-  // Seed de programas demo si está vacío
   if (TLC.programas.length === 0) {
     TLC.programas = [
       {
@@ -323,7 +381,6 @@ function inicializarApp() {
     guardarEstado();
   }
 
-  // Polling de HW
   pollEstadoHW();
   TLC._pollInterval = setInterval(pollEstadoHW, POLL_INTERVAL);
 }
