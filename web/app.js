@@ -150,14 +150,10 @@ async function pollEstadoHW() {
   }
 }
 
-// Chequeo de flotante desacoplado del cicloInterval:
-// funciona tanto en MANUAL como si el ESP32 manda DEMANDA desde hardware real
+// Flotante tiene prioridad absoluta — dispara en CUALQUIER modo excepto si ya está llenando
 function _chequearFlotante() {
-  if (TLC.hw.flotante === "DEMANDA"
-      && TLC.modo !== "LLENANDO"
-      && TLC.modo !== "STANDBY"
-      && TLC.modo !== "PAUSA_TANQUE") {
-    iniciarLlenadoTanque(true);
+  if (TLC.hw.flotante === "DEMANDA" && TLC.modo !== "LLENANDO") {
+    iniciarLlenadoTanque(TLC.modo !== "STANDBY");  // true = hay zona que retomar, false = no hay nada activo
   }
 }
 
@@ -235,25 +231,43 @@ function iniciarCicloTimer() {
 }
 
 // ─── CONTROL DE LLENADO DE TANQUE ────────────────────────────
+// esRetorno = true  → había riego activo, guardar zona para retomar después
+// esRetorno = false → sistema estaba en STANDBY, al terminar queda en STANDBY
 function iniciarLlenadoTanque(esRetorno = false) {
+  // Guardar zona activa si la había
   if (esRetorno) {
     TLC.zonaAnterior = TLC.zonaActiva;
     clearInterval(TLC._cicloInterval);
+    TLC._cicloInterval = null;
+    mostrarToast("⚠️ Tanque sin agua — pausando riego y llenando...", "warning");
+  } else {
+    TLC.zonaAnterior = null;
+    mostrarToast("⚠️ Flotante: demanda de agua — iniciando llenado...", "warning");
   }
-  TLC.modo     = "LLENANDO";
-  TLC.hw.bomba = "OFF";
-  enviarComando("/api/zonas", { accion: "CERRAR_TODAS" });
-  enviarComando("/api/bomba", { accion: "OFF" });
 
+  // Prioridad absoluta: apagar todo inmediatamente
+  TLC.modo          = "LLENANDO";
+  TLC.zonaActiva    = null;
+  TLC.hw.bomba      = "OFF";
+  TLC.timerRestante = 0;
+  enviarComando("/api/bomba",  { accion: "OFF" });
+  enviarComando("/api/zonas",  { accion: "CERRAR_TODAS" });
+  if (typeof actualizarHWBadges === "function") actualizarHWBadges();
+  if (typeof renderMonitor     === "function") renderMonitor();
+
+  // Secuencia: 500ms → abrir válvula tanque → 500ms → encender bomba
   setTimeout(() => {
     TLC.hw.valvula = "ABIERTA";
     enviarComando("/api/valvula", { accion: "ABRIR" });
+    if (typeof actualizarHWBadges === "function") actualizarHWBadges();
+
     setTimeout(() => {
       TLC.hw.bomba = "RUNNING";
       enviarComando("/api/bomba", { accion: "ON" });
       TLC.tanqueTimer = 0;
       iniciarTanqueTimer();
-      if (typeof renderMonitor === "function") renderMonitor();
+      if (typeof actualizarHWBadges === "function") actualizarHWBadges();
+      if (typeof renderMonitor     === "function") renderMonitor();
     }, 500);
   }, 500);
 }
@@ -263,12 +277,14 @@ function iniciarTanqueTimer() {
   TLC._tanqueInterval = setInterval(() => {
     TLC.tanqueTimer++;
     if (TLC.hw.flotante === "OK") {
-      detenerLlenado(true);
+      // Flotante satisfecho: apagar con retorno si había zona activa previa
+      detenerLlenado(TLC.zonaAnterior !== null);
       return;
     }
-    if (TLC.tanqueTimer >= TLC.timeoutTanqueConfigurado * 60) {
+    if (TLC.timeoutTanqueConfigurado > 0
+        && TLC.tanqueTimer >= TLC.timeoutTanqueConfigurado * 60) {
       detenerLlenado(false);
-      mostrarToast("⚠️ TIME-OUT TANQUE: Falla crítica. Sistema detenido.", "error");
+      mostrarToast("🚨 TIME-OUT TANQUE — Falla crítica. Sistema detenido.", "error");
     }
   }, 1000);
 }
