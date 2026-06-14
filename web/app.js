@@ -169,7 +169,13 @@ function _mostrarBannerOffline(visible) {
 
 // ─── CONTROL DE ZONAS MANUAL ──────────────────────────────────
 function activarZonaManual(zona) {
-  detenerCiclo();
+  // Toggle: si la zona ya está activa, apagarla
+  if (TLC.zonaActiva === zona && TLC.modo === "MANUAL") {
+    detenerCiclo();
+    mostrarToast("⏹ Zona " + zona + " apagada manualmente.", "warning");
+    return;
+  }
+  detenerCiclo(true);   // silencioso: no cambia modo todavía
   TLC.modo          = "MANUAL";
   TLC.zonaActiva    = zona;
   TLC.timerTotal    = TLC.tiempoManualGlobalConfigurado * 60;
@@ -179,6 +185,7 @@ function activarZonaManual(zona) {
   enviarComando("/api/zona",  { zona, accion: "ABRIR" });
   enviarComando("/api/bomba", { accion: "ON" });
   iniciarCicloTimer();
+  mostrarToast("💧 Zona " + zona + " activada — " + TLC.tiempoManualGlobalConfigurado + "m", "success");
   if (typeof renderMonitor === "function") renderMonitor();
 }
 
