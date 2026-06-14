@@ -125,7 +125,7 @@ async function sincronizarFlash() {
 
 async function pollEstadoHW() {
   if (MOCK.activo) {
-    // En modo offline los badges reflejan el estado interno directamente
+    _chequearFlotante();
     if (typeof actualizarHWBadges === "function") actualizarHWBadges();
     return;
   }
@@ -138,6 +138,7 @@ async function pollEstadoHW() {
     if (data.bomba    !== undefined) TLC.hw.bomba    = data.bomba;
     MOCK.activo = false;
     _mostrarBannerOffline(false);
+    _chequearFlotante();
     if (typeof actualizarHWBadges === "function") actualizarHWBadges();
   } catch(e) {
     if (!MOCK.activo) {
@@ -146,6 +147,17 @@ async function pollEstadoHW() {
       _mostrarBannerOffline(true);
     }
     if (typeof actualizarHWBadges === "function") actualizarHWBadges();
+  }
+}
+
+// Chequeo de flotante desacoplado del cicloInterval:
+// funciona tanto en MANUAL como si el ESP32 manda DEMANDA desde hardware real
+function _chequearFlotante() {
+  if (TLC.hw.flotante === "DEMANDA"
+      && TLC.modo !== "LLENANDO"
+      && TLC.modo !== "STANDBY"
+      && TLC.modo !== "PAUSA_TANQUE") {
+    iniciarLlenadoTanque(true);
   }
 }
 
@@ -209,9 +221,11 @@ function iniciarCicloTimer() {
   TLC._cicloInterval = setInterval(() => {
     if (TLC.timerRestante <= 0) {
       detenerCiclo();
+      mostrarToast("✅ Riego completado.", "success");
       return;
     }
-    if (TLC.hw.flotante === "DEMANDA" && TLC.modo !== "LLENANDO" && TLC.modo !== "STANDBY") {
+    // Chequeo flotante: el poll también lo hace, esta es la red de seguridad
+    if (TLC.hw.flotante === "DEMANDA" && TLC.modo === "MANUAL") {
       iniciarLlenadoTanque(true);
       return;
     }
@@ -262,28 +276,38 @@ function iniciarTanqueTimer() {
 function detenerLlenado(retornar) {
   clearInterval(TLC._tanqueInterval);
   TLC._tanqueInterval = null;
-  TLC.hw.bomba   = "OFF";
-  TLC.hw.valvula = "CERRADA";
-  enviarComando("/api/bomba",   { accion: "OFF" });
-  enviarComando("/api/valvula", { accion: "CERRAR" });
 
-  if (retornar && TLC.zonaAnterior !== null) {
-    setTimeout(() => {
-      const zona = TLC.zonaAnterior;
-      TLC.zonaAnterior = null;
-      TLC.modo         = "MANUAL";
-      TLC.zonaActiva   = zona;
-      TLC.hw.bomba     = "RUNNING";
-      enviarComando("/api/zona",  { zona, accion: "ABRIR" });
-      enviarComando("/api/bomba", { accion: "ON" });
-      iniciarCicloTimer();
+  // Secuencia segura: bomba OFF → 500ms → cerrar válvula tanque → 500ms → continuar
+  TLC.hw.bomba = "OFF";
+  enviarComando("/api/bomba", { accion: "OFF" });
+  if (typeof actualizarHWBadges === "function") actualizarHWBadges();
+
+  setTimeout(() => {
+    TLC.hw.valvula = "CERRADA";
+    enviarComando("/api/valvula", { accion: "CERRAR" });
+    enviarComando("/api/zonas",   { accion: "CERRAR_TODAS" });
+    if (typeof actualizarHWBadges === "function") actualizarHWBadges();
+
+    if (retornar && TLC.zonaAnterior !== null) {
+      setTimeout(() => {
+        const zona = TLC.zonaAnterior;
+        TLC.zonaAnterior = null;
+        TLC.modo         = "MANUAL";
+        TLC.zonaActiva   = zona;
+        TLC.hw.bomba     = "RUNNING";
+        enviarComando("/api/zona",  { zona, accion: "ABRIR" });
+        enviarComando("/api/bomba", { accion: "ON" });
+        iniciarCicloTimer();
+        mostrarToast("✅ Tanque lleno — retomando Zona " + zona, "success");
+        if (typeof renderMonitor === "function") renderMonitor();
+      }, 500);
+    } else {
+      TLC.modo       = "STANDBY";
+      TLC.zonaActiva = null;
+      mostrarToast("✅ Tanque lleno. Sistema en standby.", "success");
       if (typeof renderMonitor === "function") renderMonitor();
-    }, 500);
-  } else {
-    TLC.modo       = "STANDBY";
-    TLC.zonaActiva = null;
-    if (typeof renderMonitor === "function") renderMonitor();
-  }
+    }
+  }, 500);
 }
 
 // ─── SIMULAR FLOTANTE (PRUEBA) ────────────────────────────────
