@@ -426,15 +426,16 @@ function renderEstacionalChips() {
   if (!cont) return;
   cont.innerHTML = "";
   TLC.programas.forEach(prog => {
-    prog.zonas.forEach(z => {
+    prog.zonas.forEach((z, zi) => {
       if (z.minutos === 0) return;
+      const numZona = z.zona !== undefined ? z.zona : (zi + 1);
       const fin = minutosConAjuste(z.minutos);
       const chip = document.createElement("div");
       chip.className = "est-chip";
-      chip.innerHTML = `<span class="ec-label">${prog.nombre} Z${z.zona}: </span>
-        <span class="ec-base">${z.minutos}m</span>
-        <span class="ec-arrow">→</span>
-        <span class="ec-fin">${fin}m</span>`;
+      chip.innerHTML = "<span class='ec-label'>" + prog.nombre + " Z" + numZona + ": </span>" +
+        "<span class='ec-base'>" + z.minutos + "m</span>" +
+        "<span class='ec-arrow'> → </span>" +
+        "<span class='ec-fin'>" + fin + "m</span>";
       cont.appendChild(chip);
     });
   });
@@ -501,20 +502,22 @@ function renderProgList() {
       <div class="field-label" style="margin-bottom:6px;">Días de la semana</div>
       <div class="dias-row" id="dias-row-${idx}"></div>`;
 
-    // Sliders de zonas
-    let sliderHTML = '<div class="zona-sliders" style="margin-top:14px;">';
+    // Sliders de zonas — grilla 2 columnas, label "Zona N"
+    let sliderHTML = '<div class="field-label" style="margin-top:16px;margin-bottom:8px;">Minutos por zona (0 = omitir)</div>';
+    sliderHTML += '<div class="zona-sliders">';
     prog.zonas.forEach((z, zi) => {
-      sliderHTML += `
-        <div class="zona-row">
-          <label>Z${z.zona}</label>
-          <input type="range" min="0" max="30" step="1" value="${z.minutos}"
-            id="zs-${idx}-${zi}"
-            oninput="document.getElementById('zv-${idx}-${zi}').textContent=+this.value+'m'; actualizarChips()"/>
-          <div class="zv" id="zv-${idx}-${zi}">${z.minutos}m</div>
-        </div>`;
+      const numZona  = z.zona !== undefined ? z.zona : (zi + 1);
+      const minutos  = z.minutos !== undefined ? z.minutos : 0;
+      const idSlider = "zs-" + idx + "-" + zi;
+      const idVal    = "zv-" + idx + "-" + zi;
+      sliderHTML += "<div class='zona-row'>";
+      sliderHTML +=   "<label>Zona " + numZona + "</label>";
+      sliderHTML +=   "<input type='range' min='0' max='30' step='1' value='" + minutos + "' id='" + idSlider + "' oninput='onZonaSlider(this, \"" + idVal + "\")'>";
+      sliderHTML +=   "<div class='zv' id='" + idVal + "'>" + minutos + "m</div>";
+      sliderHTML += "</div>";
     });
     sliderHTML += '</div>';
-    sliderHTML += `<button class="btn-save-prog" onclick="guardarPrograma(${idx})">💾 Guardar programa</button>`;
+    sliderHTML += "<button class='btn-save-prog' onclick='guardarPrograma(" + idx + ")'>💾 Guardar programa</button>";
 
     body.innerHTML = metaFields + sliderHTML;
     item.appendChild(head);
@@ -580,8 +583,13 @@ function agregarNuevoPrograma() {
   mostrarToast("✅ Nuevo programa creado.", "success");
 }
 
+function onZonaSlider(input, idVal) {
+  const el = document.getElementById(idVal);
+  if (el) el.textContent = (+input.value) + "m";
+  actualizarChips();
+}
+
 function actualizarChips() {
-  // Leer valores actuales de todos los sliders antes de guardar
   TLC.programas.forEach((prog, idx) => {
     prog.zonas.forEach((z, zi) => {
       const sl = document.getElementById("zs-" + idx + "-" + zi);
