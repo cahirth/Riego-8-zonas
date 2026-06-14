@@ -171,12 +171,12 @@ body {
 .hw-badge.alert    { border-color: var(--c-amber);  }
 .hw-badge.inactive { border-color: var(--c-border); }
 .hw-icon {
-  width: 44px; height: 44px;
+  width: 64px; height: 64px;
   display: flex; align-items: center; justify-content: center;
-  border-radius: 50%;
-  background: rgba(255,255,255,.04);
+  border-radius: 12px;
+  background: rgba(255,255,255,.03);
 }
-.hw-icon svg { width: 26px; height: 26px; }
+.hw-icon svg { width: 52px; height: 52px; }
 .hw-name  { font-size: 11px; color: var(--c-muted); text-align: center; font-weight: 500; }
 .hw-state { font-size: 12px; font-weight: 700; font-family: var(--c-mono); text-align: center; }
 .hw-badge.active   .hw-state { color: var(--c-green); }
@@ -209,8 +209,6 @@ body {
 .cmd-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
 .cmd-sync   { background: var(--c-green);  color: #031a12; }
 .cmd-sync:hover   { filter: brightness(1.1); }
-.cmd-fill   { background: var(--c-purple); color: #fff; }
-.cmd-fill:hover   { filter: brightness(1.15); }
 .cmd-sim    { background: var(--c-amber);  color: #1a0e00; }
 .cmd-sim:hover    { filter: brightness(1.1); }
 
@@ -435,40 +433,100 @@ input[type=range]::-webkit-slider-thumb {
     <div class="section-title">Diagnóstico de Hardware</div>
     <div class="hw-grid" style="margin-top:12px;">
 
-      <!-- Flotante -->
+      <!-- Flotante de Boya -->
       <div class="hw-badge inactive" id="badge-flotante">
         <div class="hw-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="8" r="3"/>
-            <path d="M12 11v10"/>
-            <path d="M8 17c0 0 1.5 2 4 2s4-2 4-2"/>
-            <ellipse cx="12" cy="5" rx="5" ry="2" stroke-dasharray="2 1"/>
+          <!-- Sensor flotante: tanque con nivel de agua y boya con brazo articulado -->
+          <svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg" width="52" height="52">
+            <!-- Cuerpo del tanque -->
+            <rect x="6" y="22" width="28" height="24" rx="3" fill="#0D2A3A" stroke="#1E5F80" stroke-width="1.5"/>
+            <!-- Agua dentro del tanque (nivel OK por defecto) -->
+            <rect x="7.5" y="32" width="25" height="13" rx="2" fill="#0A5FA0" opacity="0.7" id="svg-agua-ok"/>
+            <!-- Ondas del agua -->
+            <path d="M9 34 Q14 32 19 34 Q24 36 29 34" stroke="#38B6FF" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+            <!-- Brazo del flotante -->
+            <line x1="30" y1="30" x2="40" y2="22" stroke="#6B8BAE" stroke-width="2" stroke-linecap="round"/>
+            <!-- Boya esférica -->
+            <circle cx="41" cy="20" r="5" fill="#0066CC" stroke="#38B6FF" stroke-width="1.2"/>
+            <circle cx="39.5" cy="18.5" r="1.5" fill="#7DD3FC" opacity="0.6"/>
+            <!-- Pivote del brazo -->
+            <circle cx="30" cy="30" r="2.5" fill="#38B6FF" stroke="#0D2A3A" stroke-width="1"/>
+            <!-- Entrada/salida del tanque -->
+            <rect x="12" y="44" width="5" height="4" rx="1" fill="#1E5F80"/>
+            <rect x="22" y="44" width="5" height="4" rx="1" fill="#1E5F80"/>
           </svg>
         </div>
         <div class="hw-name">Flotante Boya</div>
         <div class="hw-state" id="fl-state">TANQUE OK</div>
       </div>
 
-      <!-- Válvula Tanque -->
+      <!-- Electroválvula Solenoide -->
       <div class="hw-badge inactive" id="badge-valvula">
         <div class="hw-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 12h16"/>
-            <path d="M9 7l3 5 3-5"/>
-            <path d="M9 17l3-5 3 5"/>
-            <circle cx="12" cy="12" r="2"/>
+          <!-- Electroválvula solenoide: cuerpo de válvula + bobina eléctrica encima -->
+          <svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg" width="52" height="52">
+            <!-- Cuerpo principal de la válvula (forma de T) -->
+            <rect x="8" y="28" width="36" height="14" rx="3" fill="#1A3A50" stroke="#2A6080" stroke-width="1.5"/>
+            <!-- Puerto izquierdo de paso de agua -->
+            <rect x="2" y="32" width="8" height="6" rx="1.5" fill="#0D2A3A" stroke="#2A6080" stroke-width="1.2"/>
+            <!-- Puerto derecho de paso de agua -->
+            <rect x="42" y="32" width="8" height="6" rx="1.5" fill="#0D2A3A" stroke="#2A6080" stroke-width="1.2"/>
+            <!-- Flujo de agua (flechas) -->
+            <path d="M5 35 L9 35" stroke="#38B6FF" stroke-width="1.4" stroke-linecap="round"/>
+            <path d="M43 35 L47 35" stroke="#38B6FF" stroke-width="1.4" stroke-linecap="round"/>
+            <!-- Cuerpo de la bobina solenoide (encima) -->
+            <rect x="18" y="12" width="16" height="18" rx="2" fill="#0D2A3A" stroke="#2A6080" stroke-width="1.5"/>
+            <!-- Bobinado (líneas horizontales que simulan espiras) -->
+            <line x1="19.5" y1="16" x2="33.5" y2="16" stroke="#4A7A9B" stroke-width="1.1"/>
+            <line x1="19.5" y1="19" x2="33.5" y2="19" stroke="#4A7A9B" stroke-width="1.1"/>
+            <line x1="19.5" y1="22" x2="33.5" y2="22" stroke="#4A7A9B" stroke-width="1.1"/>
+            <line x1="19.5" y1="25" x2="33.5" y2="25" stroke="#4A7A9B" stroke-width="1.1"/>
+            <!-- Conector eléctrico (DIN) encima de la bobina -->
+            <rect x="22" y="6" width="8" height="7" rx="1.5" fill="#2A5070" stroke="#4A7A9B" stroke-width="1.2"/>
+            <circle cx="24" cy="9.5" r="1" fill="#38B6FF"/>
+            <circle cx="28" cy="9.5" r="1" fill="#38B6FF"/>
+            <!-- Vástago que conecta bobina con cuerpo -->
+            <rect x="24" y="28" width="4" height="3" fill="#2A6080"/>
           </svg>
         </div>
         <div class="hw-name">Válvula Tanque</div>
-        <div class="hw-state" id="vv-state">CERRADA</div>
+        <div class="hw-state" id="vv-state">CERRADA 🔴</div>
       </div>
 
-      <!-- Bomba -->
+      <!-- Bomba Centrífuga -->
       <div class="hw-badge inactive" id="badge-bomba">
         <div class="hw-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="4"/>
-            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+          <!-- Bomba centrífuga: carcasa circular con impulsor + tuberías de succión/descarga -->
+          <svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg" width="52" height="52">
+            <!-- Carcasa voluta de la bomba -->
+            <circle cx="26" cy="30" r="16" fill="#0D2440" stroke="#1E4A70" stroke-width="1.8"/>
+            <!-- Voluta interior (caracol) -->
+            <path d="M26 30 m0 -9 a9 9 0 1 1 -0.1 0" stroke="#2A6090" stroke-width="5" fill="none" stroke-linecap="round"/>
+            <!-- Impulsor (paletas radiales) -->
+            <circle cx="26" cy="30" r="5" fill="#0F3058" stroke="#38B6FF" stroke-width="1.2"/>
+            <line x1="26" y1="25" x2="26" y2="22" stroke="#38B6FF" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="29.5" y1="26.5" x2="31.5" y2="24" stroke="#38B6FF" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="29.5" y1="33.5" x2="31.5" y2="36" stroke="#38B6FF" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="26" y1="35" x2="26" y2="38" stroke="#38B6FF" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="22.5" y1="33.5" x2="20.5" y2="36" stroke="#38B6FF" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="22.5" y1="26.5" x2="20.5" y2="24" stroke="#38B6FF" stroke-width="1.5" stroke-linecap="round"/>
+            <!-- Centro del impulsor -->
+            <circle cx="26" cy="30" r="2.2" fill="#38B6FF"/>
+            <!-- Tubería de succión (entrada, izquierda) -->
+            <rect x="2" y="27" width="12" height="6" rx="2" fill="#0D2440" stroke="#1E4A70" stroke-width="1.5"/>
+            <!-- Flecha de succión -->
+            <path d="M5 30 L11 30 M9 28 L11 30 L9 32" stroke="#38B6FF" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- Tubería de descarga (salida, arriba) -->
+            <rect x="23" y="2" width="6" height="14" rx="2" fill="#0D2440" stroke="#1E4A70" stroke-width="1.5"/>
+            <!-- Flecha de descarga -->
+            <path d="M26 12 L26 5 M24 7 L26 5 L28 7" stroke="#38B6FF" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- Motor eléctrico acoplado (derecha) -->
+            <rect x="40" y="23" width="10" height="14" rx="2" fill="#1A3050" stroke="#2A5070" stroke-width="1.2"/>
+            <line x1="43" y1="26" x2="47" y2="26" stroke="#4A7A9B" stroke-width="1"/>
+            <line x1="43" y1="29" x2="47" y2="29" stroke="#4A7A9B" stroke-width="1"/>
+            <line x1="43" y1="32" x2="47" y2="32" stroke="#4A7A9B" stroke-width="1"/>
+            <!-- Eje motor-bomba -->
+            <rect x="36" y="28.5" width="6" height="3" rx="1" fill="#2A5070"/>
           </svg>
         </div>
         <div class="hw-name">Bomba Centrífuga</div>
@@ -485,10 +543,6 @@ input[type=range]::-webkit-slider-thumb {
       <button class="cmd-btn cmd-sync" onclick="sincronizarFlash()">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10a6 6 0 0112 0"/><path d="M16 10a6 6 0 01-12 0"/><polyline points="14,7 16,10 13,10"/><polyline points="6,13 4,10 7,10"/></svg>
         Sincro Flash
-      </button>
-      <button class="cmd-btn cmd-fill" onclick="forzarLlenadoManual()">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="14" height="10" rx="2"/><path d="M7 8V5a5 5 0 0110 0v3"/><path d="M10 12v3"/></svg>
-        Llenar Tanque
       </button>
       <button class="cmd-btn cmd-sim" onclick="simularFlotante()">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v14M3 10h14"/><circle cx="10" cy="10" r="3" stroke-dasharray="2 1.5"/></svg>
@@ -599,40 +653,81 @@ function renderProgramas() {
 }
 
 function actualizarHWBadges() {
-  // Flotante
+  // ── Flotante ──
   const bf = document.getElementById("badge-flotante");
   const fs = document.getElementById("fl-state");
   if (bf && fs) {
+    const agua  = bf.querySelector("#svg-agua-ok");
     if (TLC.hw.flotante === "DEMANDA") {
       bf.className = "hw-badge alert";
       fs.textContent = "DEMANDA ⚠️";
+      // Nivel bajo: reducir el rect del agua
+      if (agua) { agua.setAttribute("y","40"); agua.setAttribute("height","5"); agua.setAttribute("fill","#0A3A6A"); }
+      // Boya baja: bajar la boya SVG
+      const boya = bf.querySelector("circle[fill='#0066CC']");
+      if (boya) { boya.setAttribute("cx","41"); boya.setAttribute("cy","26"); boya.setAttribute("fill","#F59E0B"); boya.setAttribute("stroke","#FCD34D"); }
+      const brazo = bf.querySelector("line");
+      if (brazo) { brazo.setAttribute("x2","40"); brazo.setAttribute("y2","28"); }
     } else {
       bf.className = "hw-badge active";
       fs.textContent = "TANQUE OK";
+      if (agua) { agua.setAttribute("y","32"); agua.setAttribute("height","13"); agua.setAttribute("fill","#0A5FA0"); }
+      const boya = bf.querySelector("circle[fill='#0066CC'], circle[fill='#F59E0B']");
+      if (boya) { boya.setAttribute("cx","41"); boya.setAttribute("cy","20"); boya.setAttribute("fill","#0066CC"); boya.setAttribute("stroke","#38B6FF"); }
+      const brazo = bf.querySelector("line");
+      if (brazo) { brazo.setAttribute("x2","40"); brazo.setAttribute("y2","22"); }
     }
   }
-  // Válvula
+
+  // ── Válvula ──
   const bv = document.getElementById("badge-valvula");
   const vs = document.getElementById("vv-state");
   if (bv && vs) {
     if (TLC.hw.valvula === "ABIERTA") {
       bv.className = "hw-badge active";
       vs.textContent = "ABIERTA 🟢";
+      // Colorear cuerpo de la válvula en verde
+      const cuerpo = bv.querySelector("rect[x='8']");
+      if (cuerpo) { cuerpo.setAttribute("fill","#064A2A"); cuerpo.setAttribute("stroke","#00C896"); }
+      const bobina = bv.querySelector("rect[x='18']");
+      if (bobina) { bobina.setAttribute("stroke","#00C896"); }
+      // Flechas de agua visibles
+      bv.querySelectorAll("path[stroke='#38B6FF']").forEach(p => p.setAttribute("stroke","#00C896"));
     } else {
       bv.className = "hw-badge inactive";
       vs.textContent = "CERRADA 🔴";
+      const cuerpo = bv.querySelector("rect[x='8']");
+      if (cuerpo) { cuerpo.setAttribute("fill","#1A3A50"); cuerpo.setAttribute("stroke","#2A6080"); }
+      const bobina = bv.querySelector("rect[x='18']");
+      if (bobina) { bobina.setAttribute("stroke","#2A6080"); }
+      bv.querySelectorAll("path[stroke='#00C896']").forEach(p => p.setAttribute("stroke","#38B6FF"));
     }
   }
-  // Bomba
+
+  // ── Bomba ──
   const bb = document.getElementById("badge-bomba");
   const bs = document.getElementById("bm-state");
   if (bb && bs) {
     if (TLC.hw.bomba === "RUNNING") {
       bb.className = "hw-badge active";
       bs.textContent = "RUNNING ⚡";
+      // Voluta en verde brillante
+      const voluta = bb.querySelector("circle[r='16']");
+      if (voluta) { voluta.setAttribute("stroke","#00C896"); }
+      const impulsor = bb.querySelector("path[stroke-width='5']");
+      if (impulsor) { impulsor.setAttribute("stroke","#064A2A"); }
+      // Centro del impulsor iluminado
+      const centro = bb.querySelector("circle[r='2.2']");
+      if (centro) { centro.setAttribute("fill","#00C896"); }
     } else {
       bb.className = "hw-badge inactive";
       bs.textContent = "OFF";
+      const voluta = bb.querySelector("circle[r='16']");
+      if (voluta) { voluta.setAttribute("stroke","#1E4A70"); }
+      const impulsor = bb.querySelector("path[stroke-width='5']");
+      if (impulsor) { impulsor.setAttribute("stroke","#2A6090"); }
+      const centro = bb.querySelector("circle[r='2.2']");
+      if (centro) { centro.setAttribute("fill","#38B6FF"); }
     }
   }
 }
