@@ -197,7 +197,28 @@ input[type=range]::-webkit-slider-thumb {
 .prog-item-body { display: none; padding: 0 16px 16px; }
 .prog-item.open .prog-item-body { display: block; }
 
-/* ── GRILLA DE ZONAS EN PROGRAMA ── */
+/* ── SLIDER CON BOTONES +/- ── */
+.slider-row { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 180px; }
+.btn-pm {
+  width: 30px; height: 30px;
+  border-radius: 6px;
+  border: 1px solid var(--c-border);
+  background: rgba(255,255,255,.06);
+  color: var(--c-text);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: background .15s;
+  user-select: none;
+}
+.btn-pm:hover  { background: rgba(0,102,204,.2); border-color: var(--c-cobalt); }
+.btn-pm:active { transform: scale(.92); }
+
+/* ── VIGENCIA DE PROGRAMA ── */
+.vig-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.vig-hint { font-size: 11px; color: var(--c-muted); margin-top: 4px; grid-column: span 2; }
 .zona-sliders { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
 .zona-row { display: flex; align-items: center; gap: 8px; }
 .zona-row label { font-size: 12px; color: var(--c-muted); min-width: 42px; }
@@ -347,7 +368,7 @@ input[type=range]::-webkit-slider-thumb {
     </div>
     <div>
       <div class="hdr-title">Configuración TLC</div>
-      <div class="hdr-sub">Cronogramas y Ajustes &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v1.2</span></div>
+      <div class="hdr-sub">Cronogramas y Ajustes &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v1.3</span></div>
     </div>
   </div>
   <a href="monitor.html" class="btn-back">
@@ -363,8 +384,12 @@ input[type=range]::-webkit-slider-thumb {
     <div class="section-title">Ajuste Estacional Global TLC</div>
     <div class="cfg-row">
       <div class="cfg-label">Porcentaje global</div>
-      <input type="range" id="slider-est" min="10" max="150" step="5" value="100"
-        oninput="onEstacionalChange(+this.value)"/>
+      <div class="slider-row">
+        <button class="btn-pm" onclick="ajustarSlider('slider-est','est-val',-5,10,150,'%')">−</button>
+        <input type="range" id="slider-est" min="10" max="150" step="5" value="100"
+          oninput="onEstacionalChange(+this.value)"/>
+        <button class="btn-pm" onclick="ajustarSlider('slider-est','est-val',+5,10,150,'%')">+</button>
+      </div>
       <div class="cfg-val" id="est-val">100%</div>
     </div>
     <div class="cfg-desc">
@@ -378,8 +403,12 @@ input[type=range]::-webkit-slider-thumb {
     <div class="section-title">Protección Time-out de Llenado de Tanque</div>
     <div class="cfg-row">
       <div class="cfg-label">Tiempo máximo</div>
-      <input type="range" id="slider-timeout" min="0" max="15" step="1" value="5"
-        oninput="onTimeoutChange(+this.value)"/>
+      <div class="slider-row">
+        <button class="btn-pm" onclick="ajustarSlider('slider-timeout','timeout-val',-1,0,15,'m')">−</button>
+        <input type="range" id="slider-timeout" min="0" max="15" step="1" value="5"
+          oninput="onTimeoutChange(+this.value)"/>
+        <button class="btn-pm" onclick="ajustarSlider('slider-timeout','timeout-val',+1,0,15,'m')">+</button>
+      </div>
       <div class="cfg-val" id="timeout-val">5m</div>
     </div>
     <div class="cfg-desc">
@@ -413,6 +442,17 @@ input[type=range]::-webkit-slider-thumb {
 <script src="app.js"></script>
 <script>
 const DIAS_SEM = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+
+// ── SLIDER +/- ──────────────────────────────────────────────
+function ajustarSlider(idSlider, idDisp, delta, min, max, sufijo) {
+  const sl = document.getElementById(idSlider);
+  if (!sl) return;
+  const val = Math.min(max, Math.max(min, +sl.value + delta));
+  sl.value = val;
+  const disp = document.getElementById(idDisp);
+  if (disp) disp.textContent = val + sufijo;
+  sl.dispatchEvent(new Event("input"));
+}
 
 // ── AJUSTE ESTACIONAL ────────────────────────────────────────
 function onEstacionalChange(val) {
@@ -488,23 +528,37 @@ function renderProgList() {
     body.id = "prog-body-" + idx;
 
     // Campos meta
-    const metaFields = `
-      <div class="prog-meta-fields">
-        <div class="field-group">
-          <div class="field-label">Nombre</div>
-          <input class="field-input" id="pn-${idx}" type="text" value="${prog.nombre}"/>
-        </div>
-        <div class="field-group">
-          <div class="field-label">Hora de inicio</div>
-          <input class="field-input" id="ph-${idx}" type="time" value="${prog.horaInicio}"/>
-        </div>
-      </div>
-      <div class="field-label" style="margin-bottom:6px;">Días de la semana</div>
-      <div class="dias-row" id="dias-row-${idx}"></div>`;
+    const fd = prog.fechaDesde || "";
+    const fh = prog.fechaHasta || "";
+    const metaFields =
+      "<div class='prog-meta-fields'>" +
+        "<div class='field-group'>" +
+          "<div class='field-label'>Nombre</div>" +
+          "<input class='field-input' id='pn-" + idx + "' type='text' value='" + prog.nombre + "'/>" +
+        "</div>" +
+        "<div class='field-group'>" +
+          "<div class='field-label'>Hora de inicio</div>" +
+          "<input class='field-input' id='ph-" + idx + "' type='time' value='" + prog.horaInicio + "'/>" +
+        "</div>" +
+      "</div>" +
+      "<div class='field-label' style='margin-bottom:6px;'>Días de la semana</div>" +
+      "<div class='dias-row' id='dias-row-" + idx + "'></div>" +
+      // ── Vigencia ──
+      "<div class='vig-row' style='margin-top:14px;'>" +
+        "<div class='field-group'>" +
+          "<div class='field-label'>📅 Vigencia desde (MM-DD)</div>" +
+          "<input class='field-input' id='vd-" + idx + "' type='text' placeholder='ej: 10-15' maxlength='5' value='" + fd + "'/>" +
+        "</div>" +
+        "<div class='field-group'>" +
+          "<div class='field-label'>📅 Vigencia hasta (MM-DD)</div>" +
+          "<input class='field-input' id='vh-" + idx + "' type='text' placeholder='ej: 03-17' maxlength='5' value='" + fh + "'/>" +
+        "</div>" +
+        "<div class='vig-hint'>Dejá ambos campos vacíos para que el programa funcione todo el año. Para rangos que cruzan año nuevo (ej: oct→mar) funciona automáticamente.</div>" +
+      "</div>";
 
-    // Sliders de zonas — grilla 2 columnas, label "Zona N"
-    let sliderHTML = '<div class="field-label" style="margin-top:16px;margin-bottom:8px;">Minutos por zona (0 = omitir)</div>';
-    sliderHTML += '<div class="zona-sliders">';
+    // Sliders de zonas — con botones +/-
+    let sliderHTML = "<div class='field-label' style='margin-top:16px;margin-bottom:8px;'>Minutos por zona (0 = omitir)</div>";
+    sliderHTML += "<div class='zona-sliders'>";
     prog.zonas.forEach((z, zi) => {
       const numZona  = z.zona !== undefined ? z.zona : (zi + 1);
       const minutos  = z.minutos !== undefined ? z.minutos : 0;
@@ -512,11 +566,13 @@ function renderProgList() {
       const idVal    = "zv-" + idx + "-" + zi;
       sliderHTML += "<div class='zona-row'>";
       sliderHTML +=   "<label>Zona " + numZona + "</label>";
+      sliderHTML +=   "<button class='btn-pm' onclick='ajustarSlider(\"" + idSlider + "\",\"" + idVal + "\",-1,0,30,\"m\")'>−</button>";
       sliderHTML +=   "<input type='range' min='0' max='30' step='1' value='" + minutos + "' id='" + idSlider + "' oninput='onZonaSlider(this, \"" + idVal + "\")'>";
+      sliderHTML +=   "<button class='btn-pm' onclick='ajustarSlider(\"" + idSlider + "\",\"" + idVal + "\",+1,0,30,\"m\")'>+</button>";
       sliderHTML +=   "<div class='zv' id='" + idVal + "'>" + minutos + "m</div>";
       sliderHTML += "</div>";
     });
-    sliderHTML += '</div>';
+    sliderHTML += "</div>";
     sliderHTML += "<button class='btn-save-prog' onclick='guardarPrograma(" + idx + ")'>💾 Guardar programa</button>";
 
     body.innerHTML = metaFields + sliderHTML;
@@ -552,12 +608,16 @@ function eliminarPrograma(idx) {
 }
 
 function guardarPrograma(idx) {
-  const nombre = document.getElementById("pn-" + idx);
-  const hora   = document.getElementById("ph-" + idx);
+  const nombre  = document.getElementById("pn-" + idx);
+  const hora    = document.getElementById("ph-" + idx);
   const diasRow = document.getElementById("dias-row-" + idx);
+  const vd      = document.getElementById("vd-" + idx);
+  const vh      = document.getElementById("vh-" + idx);
   if (!nombre || !hora || !diasRow) return;
-  TLC.programas[idx].nombre    = nombre.value.trim() || TLC.programas[idx].nombre;
+  TLC.programas[idx].nombre     = nombre.value.trim() || TLC.programas[idx].nombre;
   TLC.programas[idx].horaInicio = hora.value;
+  TLC.programas[idx].fechaDesde = vd ? vd.value.trim() : "";
+  TLC.programas[idx].fechaHasta = vh ? vh.value.trim() : "";
   const selTags = diasRow.querySelectorAll(".dia-tag.sel");
   TLC.programas[idx].dias = Array.from(selTags).map(t => t.textContent);
   TLC.programas[idx].zonas.forEach((z, zi) => {

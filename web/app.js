@@ -1,10 +1,23 @@
 // ============================================================
-//  TLC RIEGO HIDRÁULICO — app.js  v1.1
+//  TLC RIEGO HIDRÁULICO — app.js  v1.3
 //  Motor de lógica, estado global y comunicación ESP32
-//  v1.1: Mock offline automático — funciona sin ESP32 conectado
+//  v1.1: Mock offline automático
+//  v1.2: Toggle zona manual, prioridad absoluta flotante, secuencia apagado correcta
+//  v1.3: Banner versión consola, vigencia de programas, bloqueo durante llenado
 // ============================================================
 
 "use strict";
+
+// ─── VERSIÓN ─────────────────────────────────────────────────
+const APP_VERSION = { app: "v1.3", monitor: "v1.3", config: "v1.3" };
+
+(function _bannerConsola() {
+  console.log("%c TLC Riego Hidráulico ", "background:#0066CC;color:#fff;font-weight:700;font-size:13px;border-radius:4px;padding:3px 10px");
+  console.log("%c app.js " + APP_VERSION.app + " | monitor.html " + APP_VERSION.monitor + " | config.html " + APP_VERSION.config,
+    "color:#38B6FF;font-family:monospace;font-size:11px");
+  console.log("%c ESP32_URL: '" + "" + "' | POLL: 2000ms | STORAGE: TLC_RIEGO_MULTI_DATA",
+    "color:#6B8BAE;font-size:10px");
+})();
 
 // ─── CONSTANTES ──────────────────────────────────────────────
 const STORAGE_KEY   = "TLC_RIEGO_MULTI_DATA";
@@ -351,8 +364,16 @@ function forzarLlenadoManual() {
 
 // ─── EJECUTAR PROGRAMA ────────────────────────────────────────
 function ejecutarPrograma(idxPrograma) {
+  if (TLC.modo === "LLENANDO") {
+    mostrarToast("⚠️ Llenado en curso — esperá que termine.", "warning");
+    return;
+  }
   const prog = TLC.programas[idxPrograma];
   if (!prog) return;
+  if (!programaVigente(prog)) {
+    mostrarToast("📅 '" + prog.nombre + "' está fuera de su período de vigencia.", "warning");
+    return;
+  }
   detenerCiclo(true);
   const primeraZona = prog.zonas.findIndex(z => z.minutos > 0);
   if (primeraZona === -1) { mostrarToast("El programa no tiene zonas configuradas.", "warning"); return; }
@@ -371,14 +392,36 @@ function ejecutarPrograma(idxPrograma) {
 }
 
 // ─── PROGRAMAS: CRUD ──────────────────────────────────────────
-function agregarPrograma(nombre, horainicio, dias, zonaMinutos) {
+function agregarPrograma(nombre, horainicio, dias, zonaMinutos, fechaDesde = "", fechaHasta = "") {
   TLC.programas.push({
     nombre,
     horaInicio: horainicio,
     dias,
+    fechaDesde,   // "MM-DD" ej: "10-15"
+    fechaHasta,   // "MM-DD" ej: "03-17"
     zonas: zonaMinutos.map((m, i) => ({ zona: i + 1, minutos: m })),
   });
   guardarEstado();
+}
+
+// Devuelve true si hoy está dentro de la vigencia del programa.
+// Si no tiene fechas configuradas, siempre es vigente.
+// Soporta rangos que cruzan año nuevo (ej: oct→mar).
+function programaVigente(prog) {
+  if (!prog.fechaDesde || !prog.fechaHasta) return true;
+  const hoy   = new Date();
+  const mm    = hoy.getMonth() + 1;
+  const dd    = hoy.getDate();
+  const hoyN  = mm * 100 + dd;                         // ej: 1015 para 15-oct
+  const [dM, dD] = prog.fechaDesde.split("-").map(Number);
+  const [hM, hD] = prog.fechaHasta.split("-").map(Number);
+  const desde = dM * 100 + dD;
+  const hasta = hM * 100 + hD;
+  if (desde <= hasta) {
+    return hoyN >= desde && hoyN <= hasta;             // rango dentro del mismo año
+  } else {
+    return hoyN >= desde || hoyN <= hasta;             // rango cruza año nuevo
+  }
 }
 
 function borrarPrograma(idx) {

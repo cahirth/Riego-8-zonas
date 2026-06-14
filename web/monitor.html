@@ -301,7 +301,52 @@ input[type=range]::-webkit-slider-thumb {
   box-shadow: 0 0 0 2px rgba(0,102,204,.3);
 }
 
-/* ── PROGRAMAS ── */
+/* ── SLIDER CON BOTONES +/- ── */
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 180px;
+}
+.btn-pm {
+  width: 30px; height: 30px;
+  border-radius: 6px;
+  border: 1px solid var(--c-border);
+  background: rgba(255,255,255,.06);
+  color: var(--c-text);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: background .15s;
+  user-select: none;
+}
+.btn-pm:hover  { background: rgba(0,102,204,.2); border-color: var(--c-cobalt); }
+.btn-pm:active { transform: scale(.92); }
+
+/* ── ZONAS Y PROGRAMAS BLOQUEADOS DURANTE LLENADO ── */
+.zone-btn.locked {
+  opacity: .35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.btn-exec.locked {
+  opacity: .35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.llenando-overlay {
+  display: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-amber);
+  letter-spacing: .4px;
+  text-align: center;
+  padding: 6px 0 2px;
+}
+.llenando-overlay.visible { display: block; }
 .prog-card {
   background: var(--c-surface);
   border: 1px solid var(--c-border);
@@ -312,6 +357,10 @@ input[type=range]::-webkit-slider-thumb {
   gap: 12px;
   box-shadow: var(--shadow);
 }
+.prog-card.prog-inactivo { opacity: .5; }
+.vig-badge { display: inline-block; font-size: 10px; font-family: var(--c-mono); margin-top: 5px; padding: 2px 7px; border-radius: 4px; }
+.vig-ok  { background: rgba(0,200,150,.1);  color: var(--c-green); border: 1px solid rgba(0,200,150,.2); }
+.vig-off { background: rgba(245,158,11,.1); color: var(--c-amber); border: 1px solid rgba(245,158,11,.2); }
 .prog-head { display: flex; align-items: center; justify-content: space-between; }
 .prog-name { font-size: 15px; font-weight: 700; }
 .prog-meta { font-size: 12px; color: var(--c-muted); margin-top: 2px; }
@@ -398,7 +447,7 @@ input[type=range]::-webkit-slider-thumb {
     </div>
     <div>
       <div class="hdr-title">Riego Hidráulico TLC</div>
-      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v1.2</span></div>
+      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v1.3</span></div>
     </div>
   </div>
   <a href="config.html" class="btn-cfg">
@@ -558,7 +607,8 @@ input[type=range]::-webkit-slider-thumb {
   <!-- GRILLA DE ZONAS -->
   <div>
     <div class="section-title">Zonas Físicas del Colector — Prueba Manual Directa</div>
-    <div class="zones-grid" style="margin-top:12px;" id="zones-grid">
+    <div class="llenando-overlay" id="zonas-overlay">⚠️ Llenado de tanque en curso — zonas deshabilitadas</div>
+    <div class="zones-grid" style="margin-top:8px;" id="zones-grid">
       <!-- generado por JS -->
     </div>
   </div>
@@ -566,8 +616,12 @@ input[type=range]::-webkit-slider-thumb {
   <!-- TIEMPO MANUAL -->
   <div class="manual-time-card">
     <div class="manual-time-label">Tiempo Activación Manual</div>
-    <input type="range" id="slider-manual" min="1" max="60" value="10"
-      oninput="TLC.tiempoManualGlobalConfigurado=+this.value; document.getElementById('manual-time-disp').textContent=this.value+'m'; guardarEstado()"/>
+    <div class="slider-row">
+      <button class="btn-pm" onclick="ajustarSlider('slider-manual','manual-time-disp',-1,1,60,'m')">−</button>
+      <input type="range" id="slider-manual" min="1" max="60" value="10"
+        oninput="TLC.tiempoManualGlobalConfigurado=+this.value; document.getElementById('manual-time-disp').textContent=this.value+'m'; guardarEstado()"/>
+      <button class="btn-pm" onclick="ajustarSlider('slider-manual','manual-time-disp',+1,1,60,'m')">+</button>
+    </div>
     <div class="manual-time-val" id="manual-time-disp">10m</div>
   </div>
 
@@ -585,6 +639,18 @@ input[type=range]::-webkit-slider-thumb {
 
 <script src="app.js"></script>
 <script>
+// ── SLIDER +/- ──────────────────────────────────────────────
+function ajustarSlider(idSlider, idDisp, delta, min, max, sufijo) {
+  const sl = document.getElementById(idSlider);
+  if (!sl) return;
+  let val = Math.min(max, Math.max(min, +sl.value + delta));
+  sl.value = val;
+  const disp = document.getElementById(idDisp);
+  if (disp) disp.textContent = val + sufijo;
+  // Disparar oninput para que el resto del código se entere
+  sl.dispatchEvent(new Event("input"));
+}
+
 // ── RENDER MONITOR ──────────────────────────────────────────
 
 function renderFecha() {
@@ -597,7 +663,10 @@ function renderFecha() {
 
 function renderZonas() {
   const grid = document.getElementById("zones-grid");
+  const overlay = document.getElementById("zonas-overlay");
   if (!grid) return;
+  const bloqueado = TLC.modo === "LLENANDO";
+  if (overlay) overlay.classList.toggle("visible", bloqueado);
   grid.innerHTML = "";
   for (let z = 1; z <= 8; z++) {
     const activo = TLC.zonaActiva === z;
@@ -607,7 +676,7 @@ function renderZonas() {
     const cBob   = activo ? "#064A2A" : "#1A3050";   // color bobina
     const cLine  = activo ? "#00C896" : "#3A5F80";   // color espiras
     const btn = document.createElement("button");
-    btn.className = "zone-btn" + (activo ? " active" : "");
+    btn.className = "zone-btn" + (activo ? " active" : "") + (bloqueado ? " locked" : "");
     btn.id = "zone-btn-" + z;
     btn.innerHTML =
       "<div class='zone-active-ring'></div>" +
@@ -670,25 +739,36 @@ function renderProgramas() {
     lista.innerHTML = '<p style="color:var(--c-muted);font-size:13px;">Sin programas configurados. Ir a Ajustes para crear uno.</p>';
     return;
   }
+  const bloqueado = TLC.modo === "LLENANDO";
   TLC.programas.forEach((prog, idx) => {
+    const vigente  = programaVigente(prog);
     const card = document.createElement("div");
-    card.className = "prog-card";
+    card.className = "prog-card" + (!vigente ? " prog-inactivo" : "");
     const chips = prog.zonas.map(z => {
       const fin = minutosConAjuste(z.minutos);
-      return `<span class="zona-chip${z.minutos===0?' zero':''}">Z${z.zona}: ${fin}m</span>`;
+      return "<span class='zona-chip" + (z.minutos===0?" zero":"") + "'>Z" + z.zona + ": " + fin + "m</span>";
     }).join("");
-    card.innerHTML = `
-      <div class="prog-head">
-        <div>
-          <div class="prog-name">${prog.nombre}</div>
-          <div class="prog-meta">🕐 ${prog.horaInicio} &nbsp;|&nbsp; ${prog.dias.join(", ")}</div>
-        </div>
-        <button class="btn-exec" onclick="ejecutarPrograma(${idx})">
-          <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M4 2l10 6-10 6V2z"/></svg>
-          Ejecutar
-        </button>
-      </div>
-      <div class="prog-zonas">${chips}</div>`;
+    // Badge de vigencia
+    let vigBadge = "";
+    if (prog.fechaDesde && prog.fechaHasta) {
+      vigBadge = vigente
+        ? "<span class='vig-badge vig-ok'>✅ Vigente " + prog.fechaDesde.replace("-","/") + " → " + prog.fechaHasta.replace("-","/") + "</span>"
+        : "<span class='vig-badge vig-off'>⏸ Fuera de vigencia (" + prog.fechaDesde.replace("-","/") + " → " + prog.fechaHasta.replace("-","/") + ")</span>";
+    }
+    const clsExec = "btn-exec" + (bloqueado || !vigente ? " locked" : "");
+    card.innerHTML =
+      "<div class='prog-head'>" +
+        "<div>" +
+          "<div class='prog-name'>" + prog.nombre + "</div>" +
+          "<div class='prog-meta'>🕐 " + prog.horaInicio + " &nbsp;|&nbsp; " + prog.dias.join(", ") + "</div>" +
+          vigBadge +
+        "</div>" +
+        "<button class='" + clsExec + "' onclick='ejecutarPrograma(" + idx + ")'>" +
+          "<svg viewBox='0 0 16 16' width='14' height='14' fill='currentColor'><path d='M4 2l10 6-10 6V2z'/></svg>" +
+          (vigente ? "Ejecutar" : "Inactivo") +
+        "</button>" +
+      "</div>" +
+      "<div class='prog-zonas'>" + chips + "</div>";
     lista.appendChild(card);
   });
 }
