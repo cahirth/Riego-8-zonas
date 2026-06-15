@@ -364,6 +364,29 @@ input[type=range]::-webkit-slider-thumb {
 .vig-badge { display: inline-block; font-size: 10px; font-family: var(--c-mono); margin-top: 5px; padding: 2px 7px; border-radius: 4px; }
 .vig-ok  { background: rgba(0,200,150,.1);  color: var(--c-green); border: 1px solid rgba(0,200,150,.2); }
 .vig-off { background: rgba(245,158,11,.1); color: var(--c-amber); border: 1px solid rgba(245,158,11,.2); }
+
+/* ── BOTONES PROGRAMA ACTIVO ── */
+.btn-pause  { background: rgba(245,158,11,.15); color: var(--c-amber); border: 1px solid rgba(245,158,11,.3); border-radius: var(--r-sm); padding: 7px 13px; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: filter .2s; }
+.btn-pause:hover  { filter: brightness(1.2); }
+.btn-resume { background: rgba(0,200,150,.12); color: var(--c-green); border: 1px solid rgba(0,200,150,.25); border-radius: var(--r-sm); padding: 7px 13px; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: filter .2s; }
+.btn-resume:hover { filter: brightness(1.2); }
+.btn-stop   { background: rgba(239,68,68,.12); color: var(--c-red); border: 1px solid rgba(239,68,68,.25); border-radius: var(--r-sm); padding: 7px 13px; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: filter .2s; }
+.btn-stop:hover   { filter: brightness(1.2); }
+.prog-running { border-color: var(--c-cobalt) !important; box-shadow: 0 0 0 2px rgba(0,102,204,.2); }
+.prog-pausado { border-color: var(--c-amber)  !important; box-shadow: 0 0 0 2px rgba(245,158,11,.15); }
+
+/* Zona con programa activo — parpadea pero no tiene acción */
+.zone-btn.programa-activo {
+  border-color: var(--c-cobalt);
+  background: rgba(0,102,204,.12);
+  cursor: not-allowed;
+  pointer-events: none;
+  animation: zone-blink 1.5s ease-in-out infinite;
+}
+@keyframes zone-blink {
+  0%,100% { box-shadow: 0 0 0 2px rgba(0,102,204,.4); }
+  50%      { box-shadow: 0 0 0 6px rgba(0,102,204,.08); }
+}
 .prog-head { display: flex; align-items: center; justify-content: space-between; }
 .prog-name { font-size: 15px; font-weight: 700; }
 .prog-meta { font-size: 12px; color: var(--c-muted); margin-top: 2px; }
@@ -450,7 +473,7 @@ input[type=range]::-webkit-slider-thumb {
     </div>
     <div>
       <div class="hdr-title">Riego Hidráulico TLC</div>
-      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.3</span></div>
+      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.4</span></div>
     </div>
   </div>
   <a href="config.html" class="btn-cfg">
@@ -679,7 +702,10 @@ function renderZonas() {
     const cBob   = activo ? "#064A2A" : "#1A3050";   // color bobina
     const cLine  = activo ? "#00C896" : "#3A5F80";   // color espiras
     const btn = document.createElement("button");
-    btn.className = "zone-btn" + (activo ? " active" : "") + (bloqueado ? " locked" : "");
+    btn.className = "zone-btn" +
+      (activo        ? " active"          : "") +
+      (bloqueado     ? " locked"          : "") +
+      (!activo && TLC.programaActivo !== null && !TLC.pausado && !bloqueado ? " programa-activo" : "");
     btn.id = "zone-btn-" + z;
     btn.innerHTML =
       "<div class='zone-active-ring'></div>" +
@@ -744,32 +770,69 @@ function renderProgramas() {
   }
   const bloqueado = TLC.modo === "LLENANDO";
   TLC.programas.forEach((prog, idx) => {
-    const vigente  = programaVigente(prog);
+    const vigente   = programaVigente(prog);
+    const esActivo  = TLC.programaActivo === idx && TLC.modo === "MANUAL";
+    const esPausado = TLC.programaActivo === idx && TLC.pausado;
     const card = document.createElement("div");
-    card.className = "prog-card" + (!vigente ? " prog-inactivo" : "");
+    card.className = "prog-card" +
+      (!vigente   ? " prog-inactivo" : "") +
+      (esActivo   ? " prog-running"  : "") +
+      (esPausado  ? " prog-pausado"  : "");
+
     const chips = prog.zonas.map(z => {
       const fin = minutosConAjuste(z.minutos);
       return "<span class='zona-chip" + (z.minutos===0?" zero":"") + "'>Z" + z.zona + ": " + fin + "m</span>";
     }).join("");
-    // Badge de vigencia
+
     let vigBadge = "";
     if (prog.fechaDesde && prog.fechaHasta) {
       vigBadge = vigente
         ? "<span class='vig-badge vig-ok'>✅ Vigente " + prog.fechaDesde.replace("-","/") + " → " + prog.fechaHasta.replace("-","/") + "</span>"
         : "<span class='vig-badge vig-off'>⏸ Fuera de vigencia (" + prog.fechaDesde.replace("-","/") + " → " + prog.fechaHasta.replace("-","/") + ")</span>";
     }
-    const clsExec = "btn-exec" + (bloqueado || !vigente ? " locked" : "");
-    card.innerHTML =
-      "<div class='prog-head'>" +
-        "<div>" +
-          "<div class='prog-name'>" + prog.nombre + "</div>" +
-          "<div class='prog-meta'>🕐 " + prog.horaInicio + " &nbsp;|&nbsp; " + prog.dias.join(", ") + "</div>" +
-          vigBadge +
-        "</div>" +
+
+    // Botones según estado
+    let botonesHTML = "";
+    if (esActivo && !esPausado) {
+      // Corriendo → Pausar + Detener
+      botonesHTML =
+        "<button class='btn-pause' onclick='pausarPrograma()'>" +
+          "<svg viewBox='0 0 16 16' width='12' height='12' fill='currentColor'><rect x='3' y='2' width='3' height='12' rx='1'/><rect x='10' y='2' width='3' height='12' rx='1'/></svg>" +
+          "Pausar" +
+        "</button>" +
+        "<button class='btn-stop' onclick='detenerPrograma()'>" +
+          "<svg viewBox='0 0 16 16' width='12' height='12' fill='currentColor'><rect x='3' y='3' width='10' height='10' rx='1'/></svg>" +
+          "Detener" +
+        "</button>";
+    } else if (esPausado) {
+      // Pausado → Reanudar + Detener
+      botonesHTML =
+        "<button class='btn-resume' onclick='reanudarPrograma()'>" +
+          "<svg viewBox='0 0 16 16' width='12' height='12' fill='currentColor'><path d='M4 2l10 6-10 6V2z'/></svg>" +
+          "Reanudar" +
+        "</button>" +
+        "<button class='btn-stop' onclick='detenerPrograma()'>" +
+          "<svg viewBox='0 0 16 16' width='12' height='12' fill='currentColor'><rect x='3' y='3' width='10' height='10' rx='1'/></svg>" +
+          "Detener" +
+        "</button>";
+    } else {
+      // Inactivo → Ejecutar
+      const clsExec = "btn-exec" + (bloqueado || !vigente ? " locked" : "");
+      botonesHTML =
         "<button class='" + clsExec + "' onclick='ejecutarPrograma(" + idx + ")'>" +
           "<svg viewBox='0 0 16 16' width='14' height='14' fill='currentColor'><path d='M4 2l10 6-10 6V2z'/></svg>" +
           (vigente ? "Ejecutar" : "Inactivo") +
-        "</button>" +
+        "</button>";
+    }
+
+    card.innerHTML =
+      "<div class='prog-head'>" +
+        "<div>" +
+          "<div class='prog-name'>" + prog.nombre + (esActivo && !esPausado ? " <span style='font-size:11px;color:var(--c-cobalt);font-family:var(--c-mono);'>▶ " + formatSegundos(TLC.timerRestante) + "</span>" : "") + (esPausado ? " <span style='font-size:11px;color:var(--c-amber);font-family:var(--c-mono);'>⏸ " + formatSegundos(TLC.timerRestante) + "</span>" : "") + "</div>" +
+          "<div class='prog-meta'>🕐 " + prog.horaInicio + " &nbsp;|&nbsp; " + prog.dias.join(", ") + "</div>" +
+          vigBadge +
+        "</div>" +
+        "<div style='display:flex;gap:6px;flex-wrap:wrap;align-items:center;'>" + botonesHTML + "</div>" +
       "</div>" +
       "<div class='prog-zonas'>" + chips + "</div>";
     lista.appendChild(card);
@@ -882,13 +945,23 @@ function actualizarTimerUI() {
   const fillEl   = document.getElementById("progress-fill");
   const labelEl  = document.getElementById("timer-label");
   if (!block) return;
-  const activo = TLC.modo === "MANUAL" && TLC.timerRestante > 0;
-  block.classList.toggle("visible", activo);
-  if (activo) {
-    valEl.textContent  = formatSegundos(TLC.timerRestante);
-    labelEl.textContent = "restante · Zona " + TLC.zonaActiva;
+  const activo = TLC.modo === "MANUAL" && TLC.timerRestante > 0 && !TLC.pausado;
+  block.classList.toggle("visible", activo || TLC.pausado);
+  if (activo || TLC.pausado) {
+    valEl.textContent   = formatSegundos(TLC.timerRestante);
+    const sufijo = TLC.programaActivo !== null
+      ? (TLC.pausado ? "⏸ Pausado · Zona " : "▶ Programa · Zona ") + TLC.zonaActiva
+      : "restante · Zona " + TLC.zonaActiva;
+    labelEl.textContent = sufijo;
     const pct = TLC.timerTotal > 0 ? (TLC.timerRestante / TLC.timerTotal) * 100 : 0;
-    fillEl.style.width = pct + "%";
+    fillEl.style.width  = pct + "%";
+    fillEl.style.background = TLC.pausado
+      ? "linear-gradient(90deg, var(--c-amber) 0%, #F59E0B 100%)"
+      : "linear-gradient(90deg, var(--c-cobalt) 0%, var(--c-green) 100%)";
+  }
+  // Refrescar tarjetas de programa para mostrar countdown
+  if (TLC.programaActivo !== null) {
+    if (typeof renderProgramas === "function") renderProgramas();
   }
 }
 
