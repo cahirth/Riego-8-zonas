@@ -1,17 +1,19 @@
 // ============================================================
-//  TLC RIEGO HIDRÁULICO — app.js  v2.1
+//  TLC RIEGO HIDRÁULICO — app.js  v2.3
 //  Motor de lógica, estado global y comunicación ESP32
 //  v1.1: Mock offline automático
 //  v1.2: Toggle zona manual, prioridad absoluta flotante
 //  v1.3: Banner consola, vigencia programas, bloqueo llenado, sliders +/-
 //  v2.0: Firebase Realtime DB — sincronización multi-dispositivo
 //  v2.1: Timer exacto preservado al interrumpir por llenado de tanque
+//  v2.2: Fix zona queda activa al terminar timer — push Firebase + render forzado
+//  v2.3: Fix zona enganchada multi-dispositivo — Firebase null→0, STANDBY forzado
 // ============================================================
 
 "use strict";
 
 // ─── VERSIÓN ─────────────────────────────────────────────────
-const APP_VERSION = { app: "v2.1", monitor: "v2.1", config: "v2.1" };
+const APP_VERSION = { app: "v2.3", monitor: "v2.3", config: "v2.3" };
 
 (function _bannerConsola() {
   console.log("%c TLC Riego Hidráulico ", "background:#0066CC;color:#fff;font-weight:700;font-size:13px;border-radius:4px;padding:3px 10px");
@@ -106,9 +108,17 @@ function _escucharFirebase() {
       if (data.hw.bomba    !== undefined) TLC.hw.bomba    = data.hw.bomba;
     }
     if (data.modo         !== undefined) TLC.modo         = data.modo;
-    if (data.zonaActiva   !== undefined) TLC.zonaActiva   = data.zonaActiva;
-    if (data.timerRestante !== undefined) TLC.timerRestante = data.timerRestante;
-    if (data.timerTotal   !== undefined) TLC.timerTotal   = data.timerTotal;
+    // Firebase borra nodos con valor null — si llegó STANDBY forzar zonaActiva a null
+    if (data.modo === "STANDBY") {
+      TLC.zonaActiva    = null;
+      TLC.timerRestante = 0;
+      TLC.timerTotal    = 0;
+    } else {
+      // zonaActiva 0 significa "sin zona" (Firebase no guarda null)
+      if (data.zonaActiva    !== undefined) TLC.zonaActiva    = data.zonaActiva || null;
+      if (data.timerRestante !== undefined) TLC.timerRestante = data.timerRestante;
+      if (data.timerTotal    !== undefined) TLC.timerTotal    = data.timerTotal;
+    }
 
     // Refrescar UI
     if (typeof actualizarHWBadges  === "function") actualizarHWBadges();
@@ -156,10 +166,10 @@ function _pushEstado() {
   _refEstado.set({
     hw:            { flotante: TLC.hw.flotante, valvula: TLC.hw.valvula, bomba: TLC.hw.bomba },
     modo:          TLC.modo,
-    zonaActiva:    TLC.zonaActiva,
-    timerRestante: TLC.timerRestante,
-    timerTotal:    TLC.timerTotal,
-    tanqueTimer:   TLC.tanqueTimer,
+    zonaActiva:    TLC.zonaActiva || 0,   // Firebase borra nodos null — usar 0 como "sin zona"
+    timerRestante: TLC.timerRestante || 0,
+    timerTotal:    TLC.timerTotal    || 0,
+    tanqueTimer:   TLC.tanqueTimer   || 0,
     ts:            Date.now(),
   }).catch(e => console.warn("[TLC] Firebase push error:", e.message));
 }
@@ -313,22 +323,6 @@ function activarZonaManual(zona) {
   if (typeof renderMonitor === "function") renderMonitor();
 }
 
-function detenerCiclo(silencioso = false) {
-  clearInterval(TLC._cicloInterval);
-  TLC._cicloInterval = null;
-  if (!silencioso) {
-    TLC.modo          = "STANDBY";
-    TLC.zonaActiva    = null;
-    TLC.timerRestante = 0;
-    TLC.hw.bomba      = "OFF";
-    TLC.hw.valvula    = "CERRADA";
-    enviarComando("/api/bomba",  { accion: "OFF" });
-    enviarComando("/api/zonas",  { accion: "CERRAR_TODAS" });
-    _pushEstado();
-    if (typeof renderMonitor === "function") renderMonitor();
-  }
-}
-
 function iniciarCicloTimer() {
   clearInterval(TLC._cicloInterval);
   TLC._cicloInterval = setInterval(() => {
@@ -346,6 +340,27 @@ function iniciarCicloTimer() {
     if (TLC.timerRestante % 5 === 0) _pushEstado();
     if (typeof actualizarTimerUI === "function") actualizarTimerUI();
   }, 1000);
+}
+
+function detenerCiclo(silencioso = false) {
+  clearInterval(TLC._cicloInterval);
+  TLC._cicloInterval = null;
+  if (!silencioso) {
+    TLC.modo          = "STANDBY";
+    TLC.zonaActiva    = null;
+    TLC.timerRestante = 0;
+    TLC.timerTotal    = 0;
+    TLC.hw.bomba      = "OFF";
+    TLC.hw.valvula    = "CERRADA";
+    enviarComando("/api/bomba",  { accion: "OFF" });
+    enviarComando("/api/zonas",  { accion: "CERRAR_TODAS" });
+    _pushEstado();   // push inmediato con estado final
+    // Forzar render explícito de zonas y timer
+    if (typeof actualizarTimerUI   === "function") actualizarTimerUI();
+    if (typeof actualizarHWBadges  === "function") actualizarHWBadges();
+    if (typeof renderZonas         === "function") renderZonas();
+    if (typeof renderMonitor       === "function") renderMonitor();
+  }
 }
 
 // ─── LLENADO DE TANQUE ───────────────────────────────────────
