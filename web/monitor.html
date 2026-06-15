@@ -214,6 +214,9 @@ body {
 .cmd-sync:hover   { filter: brightness(1.1); }
 .cmd-sim    { background: var(--c-amber);  color: #1a0e00; }
 .cmd-sim:hover    { filter: brightness(1.1); }
+.cmd-lluvia { background: rgba(107,139,174,.1); color: var(--c-muted); border: 1px solid var(--c-border); }
+.cmd-lluvia:hover { background: rgba(107,139,174,.2); }
+.cmd-lluvia.activo { background: #1e3a5f; color: #60a5fa; border-color: #3b82f6; }
 
 /* ── GRILLA DE ZONAS ── */
 .zones-grid {
@@ -473,7 +476,7 @@ input[type=range]::-webkit-slider-thumb {
     </div>
     <div>
       <div class="hdr-title">Riego Hidráulico TLC</div>
-      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.7</span></div>
+      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.8</span></div>
     </div>
   </div>
   <a href="config.html" class="btn-cfg">
@@ -496,6 +499,7 @@ input[type=range]::-webkit-slider-thumb {
         <span id="status-text">STANDBY</span>
       </div>
     </div>
+    <!-- Timer riego normal -->
     <div class="timer-block" id="timer-block">
       <div class="timer-row">
         <span class="timer-val" id="timer-val">00:00</span>
@@ -503,6 +507,16 @@ input[type=range]::-webkit-slider-thumb {
       </div>
       <div class="progress-track">
         <div class="progress-fill" id="progress-fill" style="width:100%"></div>
+      </div>
+    </div>
+    <!-- Timer llenado tanque con timeout -->
+    <div class="timer-block" id="tanque-timer-block">
+      <div class="timer-row">
+        <span class="timer-val" id="tanque-timer-val" style="color:var(--c-amber);">00:00</span>
+        <span class="timer-label" id="tanque-timer-label">llenando</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="tanque-progress-fill" style="width:0%;background:linear-gradient(90deg,var(--c-amber),var(--c-red))"></div>
       </div>
     </div>
   </div>
@@ -627,6 +641,13 @@ input[type=range]::-webkit-slider-thumb {
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v14M3 10h14"/><circle cx="10" cy="10" r="3" stroke-dasharray="2 1.5"/></svg>
         Simular Tanque
       </button>
+      <button class="cmd-btn cmd-lluvia" id="btn-lluvia" onclick="toggleSensorLluvia()">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 14.5A4 4 0 015 7a5 5 0 019.9-1A3.5 3.5 0 0116 13"/>
+          <path d="M8 17l1-2M11 17l1-2M8 20l1-2M11 20l1-2M14 17l1-2"/>
+        </svg>
+        <span id="lluvia-label">Sensor Lluvia</span>
+      </button>
     </div>
   </div>
 
@@ -675,6 +696,44 @@ function ajustarSlider(idSlider, idDisp, delta, min, max, sufijo) {
   if (disp) disp.textContent = val + sufijo;
   // Disparar oninput para que el resto del código se entere
   sl.dispatchEvent(new Event("input"));
+}
+
+// ── TIMER LLENADO TANQUE ────────────────────────────────────
+function actualizarTanqueTimerUI() {
+  const block   = document.getElementById("tanque-timer-block");
+  const valEl   = document.getElementById("tanque-timer-val");
+  const fillEl  = document.getElementById("tanque-progress-fill");
+  const labelEl = document.getElementById("tanque-timer-label");
+  if (!block) return;
+  const llenando = TLC.modo === "LLENANDO";
+  block.classList.toggle("visible", llenando);
+  if (llenando) {
+    valEl.textContent = formatSegundos(TLC.tanqueTimer);
+    const maxSeg = TLC.timeoutTanqueConfigurado * 60;
+    const pct    = maxSeg > 0 ? Math.min((TLC.tanqueTimer / maxSeg) * 100, 100) : 0;
+    fillEl.style.width = pct + "%";
+    // Cambiar color a rojo cuando supera el 75%
+    fillEl.style.background = pct > 75
+      ? "linear-gradient(90deg,#F59E0B,#EF4444)"
+      : "linear-gradient(90deg,#F59E0B,#FBBF24)";
+    labelEl.textContent = maxSeg > 0
+      ? "llenando · " + formatSegundos(TLC.tanqueTimer) + " / " + formatSegundos(maxSeg) + " máx"
+      : "llenando";
+  }
+}
+
+// ── SENSOR LLUVIA UI ─────────────────────────────────────────
+function actualizarBtnLluvia() {
+  const btn   = document.getElementById("btn-lluvia");
+  const label = document.getElementById("lluvia-label");
+  if (!btn || !label) return;
+  if (TLC.sensorLluvia) {
+    btn.classList.add("activo");
+    label.textContent = "🌧 Lluvia ACTIVA";
+  } else {
+    btn.classList.remove("activo");
+    label.textContent = "Sensor Lluvia";
+  }
 }
 
 // ── RENDER MONITOR ──────────────────────────────────────────
@@ -816,12 +875,16 @@ function renderProgramas() {
           "Detener" +
         "</button>";
     } else {
-      // Inactivo → Ejecutar
-      const clsExec = "btn-exec" + (bloqueado || !vigente ? " locked" : "");
+      // Inactivo → Ejecutar (bloqueado si hay programa activo, llenando, lluvia o fuera de vigencia)
+      const bloqEjec = bloqueado || !vigente || TLC.sensorLluvia || (TLC.programaActivo !== null);
+      const clsExec  = "btn-exec" + (bloqEjec ? " locked" : "");
+      let labelEjec  = vigente ? "Ejecutar" : "Inactivo";
+      if (vigente && TLC.sensorLluvia)           labelEjec = "🌧 Inhibido";
+      if (vigente && TLC.programaActivo !== null) labelEjec = "⏳ Ocupado";
       botonesHTML =
         "<button class='" + clsExec + "' onclick='ejecutarPrograma(" + idx + ")'>" +
           "<svg viewBox='0 0 16 16' width='14' height='14' fill='currentColor'><path d='M4 2l10 6-10 6V2z'/></svg>" +
-          (vigente ? "Ejecutar" : "Inactivo") +
+          labelEjec +
         "</button>";
     }
 
@@ -927,11 +990,20 @@ function actualizarStatusBanner() {
   const text  = document.getElementById("status-text");
   const dot   = document.getElementById("pulse-dot");
   if (!badge || !text) return;
-  if (TLC.modo === "MANUAL") {
+  if (TLC.sensorLluvia && TLC.modo === "STANDBY") {
+    badge.className = "status-badge llenando";
+    text.textContent = "🌧 RIEGO INHIBIDO — Sensor Lluvia";
+    dot.style.display = "block";
+  } else if (TLC.modo === "MANUAL" && TLC.programaActivo !== null) {
+    badge.className = "status-badge manual";
+    const prog = TLC.programas[TLC.programaActivo];
+    text.textContent = (TLC.pausado ? "⏸ PAUSADO: " : "▶ PROG: ") + (prog ? prog.nombre : "") + " · Zona " + TLC.zonaActiva;
+    dot.style.display = TLC.pausado ? "none" : "block";
+  } else if (TLC.modo === "MANUAL") {
     badge.className = "status-badge manual";
     text.textContent = "MANUAL: ZONA " + TLC.zonaActiva + " 💧";
     dot.style.display = "block";
-  } else if (TLC.modo === "LLENANDO" || TLC.modo === "PAUSA_TANQUE") {
+  } else if (TLC.modo === "LLENANDO") {
     badge.className = "status-badge llenando";
     text.textContent = "LLENANDO TANQUE ⚠️";
     dot.style.display = "block";
@@ -973,6 +1045,8 @@ function renderMonitor() {
   actualizarStatusBanner();
   actualizarHWBadges();
   actualizarTimerUI();
+  actualizarTanqueTimerUI();
+  actualizarBtnLluvia();
   renderZonas();
   renderProgramas();
 }

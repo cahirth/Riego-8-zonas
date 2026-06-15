@@ -1,5 +1,5 @@
 // ============================================================
-//  TLC RIEGO HIDRÁULICO — app.js  v2.7
+//  TLC RIEGO HIDRÁULICO — app.js  v2.8
 //  Motor de lógica, estado global y comunicación ESP32
 //  v1.1: Mock offline automático
 //  v1.2: Toggle zona manual, prioridad absoluta flotante
@@ -14,7 +14,7 @@
 "use strict";
 
 // ─── VERSIÓN ─────────────────────────────────────────────────
-const APP_VERSION = { app: "v2.7", monitor: "v2.7", config: "v2.7" };
+const APP_VERSION = { app: "v2.8", monitor: "v2.8", config: "v2.8" };
 
 (function _bannerConsola() {
   console.log("%c TLC Riego Hidráulico ", "background:#0066CC;color:#fff;font-weight:700;font-size:13px;border-radius:4px;padding:3px 10px");
@@ -61,15 +61,16 @@ let TLC = {
   modo:          "STANDBY",
   zonaActiva:    null,
   zonaAnterior:  null,
-  timerAnterior:  0,     // timer exacto guardado al interrumpir por tanque
-  totalAnterior:  0,     // timerTotal guardado para restaurar la barra de progreso
-  pausadoAnterior: false, // estado de pausa guardado al interrumpir por tanque
-  programaActivo: null,  // índice del programa corriendo, null si es manual
-  pausado:        false, // true si el programa está en pausa
-  zonaProgIdx:    0,     // índice dentro de prog.zonas de la zona actual
+  timerAnterior:  0,
+  totalAnterior:  0,
+  pausadoAnterior: false,
+  programaActivo: null,
+  pausado:        false,
+  zonaProgIdx:    0,
   timerRestante: 0,
   timerTotal:    0,
   tanqueTimer:   0,
+  sensorLluvia:  false,   // true = inhibe todo el riego (tanque sigue operativo)
 
   // Internos (no sincronizados)
   _cicloInterval:  null,
@@ -125,12 +126,14 @@ function _escucharFirebase() {
       if (data.timerTotal    !== undefined) TLC.timerTotal    = data.timerTotal;
     }
 
+    if (data.sensorLluvia !== undefined) TLC.sensorLluvia = data.sensorLluvia;
+
     // Refrescar UI
-    if (typeof actualizarHWBadges  === "function") actualizarHWBadges();
-    if (typeof actualizarTimerUI   === "function") actualizarTimerUI();
+    if (typeof actualizarHWBadges     === "function") actualizarHWBadges();
+    if (typeof actualizarTimerUI      === "function") actualizarTimerUI();
     if (typeof actualizarStatusBanner === "function") actualizarStatusBanner();
-    if (typeof renderZonas         === "function") renderZonas();
-    if (typeof renderProgramas     === "function") renderProgramas();
+    if (typeof renderZonas            === "function") renderZonas();
+    if (typeof renderProgramas        === "function") renderProgramas();
 
     // Si llegó un modo LLENANDO desde otro dispositivo, arrancar timer local
     if (data.modo === "LLENANDO" && !TLC._tanqueInterval) {
@@ -171,12 +174,32 @@ function _pushEstado() {
   _refEstado.set({
     hw:            { flotante: TLC.hw.flotante, valvula: TLC.hw.valvula, bomba: TLC.hw.bomba },
     modo:          TLC.modo,
-    zonaActiva:    TLC.zonaActiva || 0,   // Firebase borra nodos null — usar 0 como "sin zona"
+    zonaActiva:    TLC.zonaActiva    || 0,
     timerRestante: TLC.timerRestante || 0,
     timerTotal:    TLC.timerTotal    || 0,
     tanqueTimer:   TLC.tanqueTimer   || 0,
+    sensorLluvia:  TLC.sensorLluvia  || false,
     ts:            Date.now(),
   }).catch(e => console.warn("[TLC] Firebase push error:", e.message));
+}
+
+// ─── SENSOR DE LLUVIA ─────────────────────────────────────────
+function toggleSensorLluvia() {
+  TLC.sensorLluvia = !TLC.sensorLluvia;
+  _pushEstado();
+  if (TLC.sensorLluvia) {
+    // Si hay riego activo, detenerlo — el tanque sigue operativo
+    if (TLC.modo === "MANUAL") {
+      detenerCiclo();
+    }
+    mostrarToast("🌧 Sensor lluvia ACTIVO — riego inhibido", "warning");
+    _enviarNotificacion("🌧 Sensor de Lluvia", "Riego inhibido por lluvia. El tanque sigue operativo.");
+  } else {
+    mostrarToast("☀️ Sensor lluvia desactivado — riego habilitado", "success");
+    _enviarNotificacion("☀️ Sensor de Lluvia", "Riego habilitado nuevamente.");
+  }
+  if (typeof renderMonitor   === "function") renderMonitor();
+  if (typeof actualizarHWBadges === "function") actualizarHWBadges();
 }
 
 // ─── GUARDAR CONFIG EN FIREBASE ───────────────────────────────
@@ -293,6 +316,27 @@ function _mostrarBannerOffline(visible) {
   el.style.opacity = visible ? "1" : "0";
 }
 
+// ─── NOTIFICACIONES PUSH ─────────────────────────────────────
+function _solicitarPermisoNotificaciones() {
+  if (!("Notification" in window)) return;
+  if (Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+}
+
+function _enviarNotificacion(titulo, cuerpo, icono = "💧") {
+  if (!("Notification" in window)) return;
+  if (Notification.permission !== "granted") return;
+  try {
+    new Notification("TLC Riego — " + titulo, {
+      body: cuerpo,
+      icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>" + icono + "</text></svg>",
+      badge: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>💧</text></svg>",
+      tag: "tlc-riego",    // reemplaza notificación anterior del mismo tag
+    });
+  } catch(e) { console.warn("[TLC] Notificación fallida:", e.message); }
+}
+
 // ─── FLOTANTE (prioridad absoluta) ───────────────────────────
 function _chequearFlotante() {
   if (TLC.hw.flotante === "DEMANDA"
@@ -304,11 +348,14 @@ function _chequearFlotante() {
 
 // ─── CONTROL DE ZONAS MANUAL ─────────────────────────────────
 function activarZonaManual(zona) {
+  if (TLC.sensorLluvia) {
+    mostrarToast("🌧 Sensor lluvia activo — riego inhibido.", "warning");
+    return;
+  }
   if (TLC.modo === "LLENANDO") {
     mostrarToast("⚠️ Llenado en curso — zonas deshabilitadas.", "warning");
     return;
   }
-  // Bloquear siempre que haya programa activo — corriendo O pausado
   if (TLC.programaActivo !== null) {
     mostrarToast("⚠️ Programa " + (TLC.pausado ? "pausado" : "en curso") + " — usá Detener primero.", "warning");
     return;
@@ -316,6 +363,7 @@ function activarZonaManual(zona) {
   if (TLC.zonaActiva === zona && TLC.modo === "MANUAL") {
     detenerCiclo();
     mostrarToast("⏹ Zona " + zona + " apagada.", "warning");
+    _enviarNotificacion("Zona " + zona, "Riego manual detenido.", "⏹");
     return;
   }
   detenerCiclo(true);
@@ -332,6 +380,7 @@ function activarZonaManual(zona) {
   _pushEstado();
   iniciarCicloTimer();
   mostrarToast("💧 Zona " + zona + " activada — " + TLC.tiempoManualGlobalConfigurado + "m", "success");
+  _enviarNotificacion("Zona " + zona + " activa", "Riego manual por " + TLC.tiempoManualGlobalConfigurado + " minutos.", "💧");
   if (typeof renderMonitor === "function") renderMonitor();
 }
 
@@ -425,19 +474,21 @@ function iniciarLlenadoTanque(esRetorno = false) {
     TLC.zonaAnterior    = TLC.zonaActiva;
     TLC.timerAnterior   = TLC.timerRestante;
     TLC.totalAnterior   = TLC.timerTotal;
-    TLC.pausadoAnterior = TLC.pausado;        // ← guardar estado de pausa
+    TLC.pausadoAnterior = TLC.pausado;
     clearInterval(TLC._cicloInterval);
     TLC._cicloInterval  = null;
     const msg = TLC.pausado
       ? "⚠️ Tanque sin agua — llenando (programa pausado)..."
       : "⚠️ Tanque sin agua — pausando riego en " + formatSegundos(TLC.timerRestante) + "...";
     mostrarToast(msg, "warning");
+    _enviarNotificacion("⚠️ Tanque sin agua", "Riego pausado. Llenando el tanque...", "⚠️");
   } else {
     TLC.zonaAnterior    = null;
     TLC.timerAnterior   = 0;
     TLC.totalAnterior   = 0;
     TLC.pausadoAnterior = false;
     mostrarToast("⚠️ Flotante: demanda — iniciando llenado...", "warning");
+    _enviarNotificacion("⚠️ Tanque sin agua", "Iniciando llenado de tanque.", "⚠️");
   }
   TLC.modo          = "LLENANDO";
   TLC.zonaActiva    = null;
@@ -469,6 +520,8 @@ function iniciarTanqueTimer() {
   clearInterval(TLC._tanqueInterval);
   TLC._tanqueInterval = setInterval(() => {
     TLC.tanqueTimer++;
+    // Actualizar UI del timeout en tiempo real
+    if (typeof actualizarTanqueTimerUI === "function") actualizarTanqueTimerUI();
     if (TLC.hw.flotante === "OK") {
       detenerLlenado(TLC.zonaAnterior !== null);
       return;
@@ -477,6 +530,7 @@ function iniciarTanqueTimer() {
         && TLC.tanqueTimer >= TLC.timeoutTanqueConfigurado * 60) {
       detenerLlenado(false);
       mostrarToast("🚨 TIME-OUT TANQUE — Falla crítica. Sistema detenido.", "error");
+      _enviarNotificacion("🚨 Falla crítica", "Time-out de llenado de tanque. Sistema detenido.", "🚨");
     }
   }, 1000);
 }
@@ -511,13 +565,12 @@ function detenerLlenado(retornar) {
         TLC.timerTotal       = totalGuardado;
 
         if (estabaPausado) {
-          // Programa estaba pausado — volver a estado pausado, NO arrancar bomba
           TLC.pausado      = true;
           TLC.hw.bomba     = "OFF";
           _pushEstado();
           mostrarToast("✅ Tanque lleno — Zona " + zona + " en pausa (" + formatSegundos(timerGuardado) + " restantes)", "warning");
+          _enviarNotificacion("✅ Tanque lleno", "Zona " + zona + " en pausa. " + formatSegundos(timerGuardado) + " restantes.", "✅");
         } else {
-          // Estaba corriendo — reanudar normalmente
           TLC.pausado      = false;
           TLC.hw.bomba     = "RUNNING";
           enviarComando("/api/zona",  { zona, accion: "ABRIR" });
@@ -525,6 +578,7 @@ function detenerLlenado(retornar) {
           iniciarCicloTimer();
           _pushEstado();
           mostrarToast("✅ Tanque lleno — retomando Zona " + zona + " (" + formatSegundos(timerGuardado) + " restantes)", "success");
+          _enviarNotificacion("✅ Tanque lleno", "Retomando Zona " + zona + ". " + formatSegundos(timerGuardado) + " restantes.", "✅");
         }
         if (typeof renderMonitor === "function") renderMonitor();
       }, 500);
@@ -533,6 +587,7 @@ function detenerLlenado(retornar) {
       TLC.zonaActiva = null;
       _pushEstado();
       mostrarToast("✅ Tanque lleno. Sistema en standby.", "success");
+      _enviarNotificacion("✅ Tanque lleno", "Sistema en standby.", "✅");
       if (typeof renderMonitor === "function") renderMonitor();
     }
   }, 500);
@@ -560,7 +615,9 @@ function forzarLlenadoManual() {
 
 // ─── EJECUTAR PROGRAMA ───────────────────────────────────────
 function ejecutarPrograma(idxPrograma) {
+  if (TLC.sensorLluvia) { mostrarToast("🌧 Sensor lluvia activo — riego inhibido.", "warning"); return; }
   if (TLC.modo === "LLENANDO") { mostrarToast("⚠️ Llenado en curso.", "warning"); return; }
+  if (TLC.programaActivo !== null) { mostrarToast("⚠️ Detené el programa actual primero.", "warning"); return; }
   const prog = TLC.programas[idxPrograma];
   if (!prog) return;
   if (!programaVigente(prog)) {
@@ -573,7 +630,7 @@ function ejecutarPrograma(idxPrograma) {
   const minutosFinales  = Math.round(prog.zonas[primeraZona].minutos * (TLC.ajusteEstacionalTLC / 100));
   TLC.modo            = "MANUAL";
   TLC.zonaActiva      = primeraZona + 1;
-  TLC.programaActivo  = idxPrograma;   // ← marcar programa activo
+  TLC.programaActivo  = idxPrograma;
   TLC.pausado         = false;
   TLC.timerTotal      = minutosFinales * 60;
   TLC.timerRestante   = TLC.timerTotal;
@@ -585,6 +642,7 @@ function ejecutarPrograma(idxPrograma) {
   iniciarCicloTimer();
   if (typeof renderMonitor === "function") renderMonitor();
   mostrarToast("▶️ Programa '" + prog.nombre + "' iniciado.", "success");
+  _enviarNotificacion("Programa " + prog.nombre, "Riego iniciado — Zona " + (primeraZona + 1) + " por " + minutosFinales + "m.", "▶️");
 }
 
 function pausarPrograma() {
@@ -689,10 +747,13 @@ function inicializarApp() {
   const fbOk = _iniciarFirebase();
   if (fbOk) {
     _escucharFirebase();
-    _mostrarBannerOffline(true);  // ESP32 no conectado aún
+    _mostrarBannerOffline(true);
   }
 
-  // 4. Polling al ESP32 (cuando exista)
+  // 4. Solicitar permiso de notificaciones push
+  _solicitarPermisoNotificaciones();
+
+  // 5. Polling al ESP32 (cuando exista)
   if (ESP32_URL) {
     pollEstadoHW();
     TLC._pollInterval = setInterval(pollEstadoHW, POLL_INTERVAL_HW);
