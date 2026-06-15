@@ -14,7 +14,7 @@
 "use strict";
 
 // ─── VERSIÓN ─────────────────────────────────────────────────
-const APP_VERSION = { app: "v2.10", monitor: "v2.10", config: "v2.10" };
+const APP_VERSION = { app: "v2.11", monitor: "v2.11", config: "v2.11" };
 
 (function _bannerConsola() {
   console.log("%c TLC Riego Hidráulico ", "background:#0066CC;color:#fff;font-weight:700;font-size:13px;border-radius:4px;padding:3px 10px");
@@ -143,9 +143,14 @@ function _escucharFirebase() {
       TLC.tanqueTimer = data.tanqueTimer || 0;
       iniciarTanqueTimer();
     }
-    // Si llegó MANUAL desde otro dispositivo, arrancar ciclo local
-    if (data.modo === "MANUAL" && !TLC._cicloInterval && data.timerRestante > 0) {
+    // Si llegó MANUAL desde otro dispositivo, arrancar ciclo local (solo si no está pausado)
+    if (data.modo === "MANUAL" && !TLC._cicloInterval && data.timerRestante > 0 && !TLC.pausado) {
       iniciarCicloTimer();
+    }
+    // Si llegó PAUSADO desde Firebase, detener ciclo local
+    if (data.pausado === true && TLC._cicloInterval) {
+      clearInterval(TLC._cicloInterval);
+      TLC._cicloInterval = null;
     }
     // Si llegó STANDBY, detener timers locales
     if (data.modo === "STANDBY") {
@@ -411,7 +416,7 @@ function iniciarCicloTimer() {
       return;
     }
     TLC.timerRestante--;
-    if (TLC.timerRestante % 5 === 0) _pushEstado();
+    if (TLC.timerRestante % 5 === 0 && !TLC.pausado) _pushEstado();
     if (typeof actualizarTimerUI === "function") actualizarTimerUI();
   }, 1000);
 }
@@ -661,16 +666,21 @@ function ejecutarPrograma(idxPrograma) {
 
 function pausarPrograma() {
   if (TLC.modo !== "MANUAL" || TLC.programaActivo === null) return;
+  // 1. Limpiar interval PRIMERO
   clearInterval(TLC._cicloInterval);
   TLC._cicloInterval = null;
+  // 2. Setear estado
   TLC.pausado    = true;
   TLC.hw.bomba   = "OFF";
   TLC.hw.valvula = "CERRADA";
   enviarComando("/api/bomba",  { accion: "OFF" });
   enviarComando("/api/zonas",  { accion: "CERRAR_TODAS" });
+  // 3. Push inmediato con pausado:true — otros dispositivos paran su ciclo
   _pushEstado();
   mostrarToast("⏸ Programa pausado — " + formatSegundos(TLC.timerRestante) + " restantes.", "warning");
-  if (typeof renderMonitor === "function") renderMonitor();
+  // 4. Render DESPUÉS del push para que la UI refleje el estado correcto
+  if (typeof actualizarTimerUI === "function") actualizarTimerUI();
+  if (typeof renderMonitor     === "function") renderMonitor();
 }
 
 function reanudarPrograma() {

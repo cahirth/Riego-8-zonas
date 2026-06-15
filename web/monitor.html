@@ -214,9 +214,23 @@ body {
 .cmd-sync:hover   { filter: brightness(1.1); }
 .cmd-sim    { background: var(--c-amber);  color: #1a0e00; }
 .cmd-sim:hover    { filter: brightness(1.1); }
-.cmd-lluvia { background: rgba(107,139,174,.1); color: var(--c-muted); border: 1px solid var(--c-border); }
-.cmd-lluvia:hover { background: rgba(107,139,174,.2); }
-.cmd-lluvia.activo { background: #1e3a5f; color: #60a5fa; border-color: #3b82f6; }
+.cmd-lluvia {
+  background: #1a0505;
+  color: #7A2020;
+  border: 1px solid #5A1515;
+}
+.cmd-lluvia:hover { background: #2A0A0A; filter: brightness(1.2); }
+.cmd-lluvia.activo {
+  background: #0f2a4a;
+  color: #60a5fa;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59,130,246,.25), 0 0 12px rgba(59,130,246,.15);
+  animation: lluvia-pulse 1.8s ease-in-out infinite;
+}
+@keyframes lluvia-pulse {
+  0%,100% { box-shadow: 0 0 0 2px rgba(59,130,246,.25), 0 0 12px rgba(59,130,246,.15); }
+  50%      { box-shadow: 0 0 0 4px rgba(59,130,246,.15), 0 0 20px rgba(59,130,246,.25); }
+}
 
 /* ── GRILLA DE ZONAS ── */
 .zones-grid {
@@ -257,6 +271,27 @@ body {
   color: var(--c-muted);
 }
 .zone-btn.active .z-num { color: var(--c-cobalt); }
+
+/* ── BARRA DE PROGRESO POR ZONA ── */
+.z-progress-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(255,255,255,.06);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+.z-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--c-cobalt) 0%, var(--c-green) 100%);
+  transition: width .9s linear;
+  width: 0%;
+}
+.zone-btn:not(.active) .z-progress-fill {
+  background: rgba(255,255,255,.06);
+  width: 100%;
+}
 .zone-active-ring {
   position: absolute;
   top: 6px; right: 6px;
@@ -476,7 +511,7 @@ input[type=range]::-webkit-slider-thumb {
     </div>
     <div>
       <div class="hdr-title">Riego Hidráulico TLC</div>
-      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.10</span></div>
+      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.11</span></div>
     </div>
   </div>
   <a href="config.html" class="btn-cfg">
@@ -778,6 +813,10 @@ function renderZonas() {
       (bloqueado ? " locked"          : "") +
       (!activo && TLC.programaActivo !== null && !bloqueado ? " programa-activo" : "");
     btn.id = "zone-btn-" + z;
+    const pctZona = activo && TLC.timerTotal > 0
+      ? (TLC.timerRestante / TLC.timerTotal) * 100
+      : 0;
+
     btn.innerHTML =
       "<div class='zone-active-ring'></div>" +
 
@@ -795,31 +834,29 @@ function renderZonas() {
         "</svg>" +
       "</div>" +
 
-      // ── Electroválvula solenoide (abajo) ──
+      // ── Electroválvula solenoide ──
       "<div class='z-valve'>" +
         "<svg viewBox='0 0 44 28' fill='none' xmlns='http://www.w3.org/2000/svg'>" +
-          // Cuerpo de la válvula
           "<rect x='7' y='14' width='30' height='10' rx='2' fill='#0D1B2A' stroke='" + cValv + "' stroke-width='1.3'/>" +
-          // Puertos izq/der
           "<rect x='1'  y='16' width='7'  height='6' rx='1' fill='#0D1B2A' stroke='" + cValv + "' stroke-width='1'/>" +
           "<rect x='36' y='16' width='7'  height='6' rx='1' fill='#0D1B2A' stroke='" + cValv + "' stroke-width='1'/>" +
-          // Bobina solenoide
           "<rect x='15' y='4' width='14' height='11' rx='1.5' fill='" + cBob + "' stroke='" + cValv + "' stroke-width='1.3'/>" +
-          // Espiras de la bobina
           "<line x1='16.5' y1='7'  x2='27.5' y2='7'  stroke='" + cLine + "' stroke-width='0.9'/>" +
           "<line x1='16.5' y1='9.5' x2='27.5' y2='9.5' stroke='" + cLine + "' stroke-width='0.9'/>" +
           "<line x1='16.5' y1='12' x2='27.5' y2='12' stroke='" + cLine + "' stroke-width='0.9'/>" +
-          // Vástago
           "<rect x='20' y='14' width='4' height='3' fill='" + cValv + "'/>" +
-          // Conector DIN
           "<rect x='18' y='1' width='8' height='5' rx='1' fill='#0D2A3A' stroke='" + cValv + "' stroke-width='1'/>" +
           "<circle cx='20.5' cy='3.5' r='0.9' fill='" + cLine + "'/>" +
           "<circle cx='23.5' cy='3.5' r='0.9' fill='" + cLine + "'/>" +
-          // Estado: punto indicador derecha del cuerpo
           (activo
             ? "<circle cx='38' cy='19' r='2.5' fill='#00C896'/>"
             : "<circle cx='38' cy='19' r='2.5' fill='#EF4444' opacity='0.7'/>") +
         "</svg>" +
+      "</div>" +
+
+      // ── Barra de progreso zona ──
+      "<div class='z-progress-track' style='width:calc(100% - 8px)'>" +
+        "<div class='z-progress-fill' id='z-prog-" + z + "' style='width:" + (activo ? pctZona : 0) + "%'></div>" +
       "</div>" +
 
       "<div class='z-num'>ZONA " + z + "</div>";
@@ -1048,7 +1085,18 @@ function actualizarTimerUI() {
       ? "linear-gradient(90deg, var(--c-amber) 0%, #F59E0B 100%)"
       : "linear-gradient(90deg, var(--c-cobalt) 0%, var(--c-green) 100%)";
   }
-  // Actualizar solo el countdown inline en la tarjeta — sin re-renderizar todo el DOM
+  // Actualizar barra de progreso de la zona activa sin re-renderizar
+  if (TLC.zonaActiva) {
+    const zFill = document.getElementById("z-prog-" + TLC.zonaActiva);
+    if (zFill) {
+      const pct = TLC.timerTotal > 0 ? (TLC.timerRestante / TLC.timerTotal) * 100 : 0;
+      zFill.style.width = pct + "%";
+      zFill.style.background = TLC.pausado
+        ? "linear-gradient(90deg, var(--c-amber), #FBBF24)"
+        : "linear-gradient(90deg, var(--c-cobalt), var(--c-green))";
+    }
+  }
+  // Actualizar solo el countdown inline en la tarjeta
   if (TLC.programaActivo !== null) {
     const spans = document.querySelectorAll(".prog-countdown");
     spans.forEach(s => { s.textContent = formatSegundos(TLC.timerRestante); });
