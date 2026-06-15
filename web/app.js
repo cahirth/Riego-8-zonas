@@ -1,5 +1,5 @@
 // ============================================================
-//  TLC RIEGO HIDRÁULICO — app.js  v2.5
+//  TLC RIEGO HIDRÁULICO — app.js  v2.7
 //  Motor de lógica, estado global y comunicación ESP32
 //  v1.1: Mock offline automático
 //  v1.2: Toggle zona manual, prioridad absoluta flotante
@@ -14,7 +14,7 @@
 "use strict";
 
 // ─── VERSIÓN ─────────────────────────────────────────────────
-const APP_VERSION = { app: "v2.5", monitor: "v2.5", config: "v2.5" };
+const APP_VERSION = { app: "v2.7", monitor: "v2.7", config: "v2.7" };
 
 (function _bannerConsola() {
   console.log("%c TLC Riego Hidráulico ", "background:#0066CC;color:#fff;font-weight:700;font-size:13px;border-radius:4px;padding:3px 10px");
@@ -61,10 +61,12 @@ let TLC = {
   modo:          "STANDBY",
   zonaActiva:    null,
   zonaAnterior:  null,
-  timerAnterior: 0,     // timer exacto guardado al interrumpir por tanque
-  totalAnterior: 0,     // timerTotal guardado para restaurar la barra de progreso
-  programaActivo: null, // índice del programa corriendo, null si es manual
+  timerAnterior:  0,     // timer exacto guardado al interrumpir por tanque
+  totalAnterior:  0,     // timerTotal guardado para restaurar la barra de progreso
+  pausadoAnterior: false, // estado de pausa guardado al interrumpir por tanque
+  programaActivo: null,  // índice del programa corriendo, null si es manual
   pausado:        false, // true si el programa está en pausa
+  zonaProgIdx:    0,     // índice dentro de prog.zonas de la zona actual
   timerRestante: 0,
   timerTotal:    0,
   tanqueTimer:   0,
@@ -337,8 +339,11 @@ function iniciarCicloTimer() {
   clearInterval(TLC._cicloInterval);
   TLC._cicloInterval = setInterval(() => {
     if (TLC.timerRestante <= 0) {
-      detenerCiclo();
-      mostrarToast("✅ Riego completado.", "success");
+      // Antes de detener, verificar si hay siguiente zona en el programa
+      if (!_avanzarSiguienteZona()) {
+        detenerCiclo();
+        mostrarToast("✅ Programa completado.", "success");
+      }
       return;
     }
     if (TLC.hw.flotante === "DEMANDA" && TLC.modo === "MANUAL") {
@@ -346,10 +351,49 @@ function iniciarCicloTimer() {
       return;
     }
     TLC.timerRestante--;
-    // Push a Firebase cada 5 segundos para no saturar
     if (TLC.timerRestante % 5 === 0) _pushEstado();
     if (typeof actualizarTimerUI === "function") actualizarTimerUI();
   }, 1000);
+}
+
+// Busca la siguiente zona con minutos > 0 en el programa activo.
+// Retorna true si encontró y arrancó la siguiente zona, false si no hay más.
+function _avanzarSiguienteZona() {
+  if (TLC.programaActivo === null) return false;
+  const prog = TLC.programas[TLC.programaActivo];
+  if (!prog) return false;
+
+  // Buscar la siguiente zona a partir de la actual (zonaActiva es 1-based)
+  const idxActual = TLC.zonaActiva - 1;
+  let idxSiguiente = -1;
+  for (let i = idxActual + 1; i < prog.zonas.length; i++) {
+    if (prog.zonas[i].minutos > 0) { idxSiguiente = i; break; }
+  }
+
+  if (idxSiguiente === -1) return false;  // no hay más zonas
+
+  // Cerrar zona actual antes de abrir la siguiente
+  const siguienteZona    = prog.zonas[idxSiguiente].zona;
+  const minutosFinales   = minutosConAjuste(prog.zonas[idxSiguiente].minutos);
+  clearInterval(TLC._cicloInterval);
+  TLC._cicloInterval = null;
+
+  enviarComando("/api/zonas", { accion: "CERRAR_TODAS" });
+
+  setTimeout(() => {
+    TLC.zonaActiva    = siguienteZona;
+    TLC.timerTotal    = minutosFinales * 60;
+    TLC.timerRestante = TLC.timerTotal;
+    TLC.hw.bomba      = "RUNNING";
+    enviarComando("/api/zona",  { zona: siguienteZona, accion: "ABRIR" });
+    enviarComando("/api/bomba", { accion: "ON" });
+    _pushEstado();
+    iniciarCicloTimer();
+    mostrarToast("💧 Zona " + siguienteZona + " — " + minutosFinales + "m", "success");
+    if (typeof renderMonitor === "function") renderMonitor();
+  }, 800);  // 800ms de pausa entre zonas para que la válvula cierre antes de abrir la siguiente
+
+  return true;
 }
 
 function detenerCiclo(silencioso = false) {
@@ -378,16 +422,21 @@ function detenerCiclo(silencioso = false) {
 // ─── LLENADO DE TANQUE ───────────────────────────────────────
 function iniciarLlenadoTanque(esRetorno = false) {
   if (esRetorno) {
-    TLC.zonaAnterior   = TLC.zonaActiva;
-    TLC.timerAnterior  = TLC.timerRestante;   // ← guardar timer exacto
-    TLC.totalAnterior  = TLC.timerTotal;      // ← guardar total para la barra
+    TLC.zonaAnterior    = TLC.zonaActiva;
+    TLC.timerAnterior   = TLC.timerRestante;
+    TLC.totalAnterior   = TLC.timerTotal;
+    TLC.pausadoAnterior = TLC.pausado;        // ← guardar estado de pausa
     clearInterval(TLC._cicloInterval);
-    TLC._cicloInterval = null;
-    mostrarToast("⚠️ Tanque sin agua — pausando riego en " + formatSegundos(TLC.timerRestante) + "...", "warning");
+    TLC._cicloInterval  = null;
+    const msg = TLC.pausado
+      ? "⚠️ Tanque sin agua — llenando (programa pausado)..."
+      : "⚠️ Tanque sin agua — pausando riego en " + formatSegundos(TLC.timerRestante) + "...";
+    mostrarToast(msg, "warning");
   } else {
-    TLC.zonaAnterior  = null;
-    TLC.timerAnterior = 0;
-    TLC.totalAnterior = 0;
+    TLC.zonaAnterior    = null;
+    TLC.timerAnterior   = 0;
+    TLC.totalAnterior   = 0;
+    TLC.pausadoAnterior = false;
     mostrarToast("⚠️ Flotante: demanda — iniciando llenado...", "warning");
   }
   TLC.modo          = "LLENANDO";
@@ -447,22 +496,36 @@ function detenerLlenado(retornar) {
 
     if (retornar && TLC.zonaAnterior !== null) {
       setTimeout(() => {
-        const zona          = TLC.zonaAnterior;
-        const timerGuardado = TLC.timerAnterior || 0;
-        const totalGuardado = TLC.totalAnterior || timerGuardado;
-        TLC.zonaAnterior   = null;
-        TLC.timerAnterior  = 0;
-        TLC.totalAnterior  = 0;
-        TLC.modo           = "MANUAL";
-        TLC.zonaActiva     = zona;
-        TLC.timerRestante  = timerGuardado;   // ← retomar exactamente donde quedó
-        TLC.timerTotal     = totalGuardado;
-        TLC.hw.bomba       = "RUNNING";
-        enviarComando("/api/zona",  { zona, accion: "ABRIR" });
-        enviarComando("/api/bomba", { accion: "ON" });
-        iniciarCicloTimer();
-        _pushEstado();
-        mostrarToast("✅ Tanque lleno — retomando Zona " + zona + " (" + formatSegundos(timerGuardado) + " restantes)", "success");
+        const zona           = TLC.zonaAnterior;
+        const timerGuardado  = TLC.timerAnterior || 0;
+        const totalGuardado  = TLC.totalAnterior || timerGuardado;
+        const eraPrograma    = TLC.programaActivo !== null;
+        const estabaPausado  = TLC.pausadoAnterior || false;  // ← estado de pausa guardado
+        TLC.zonaAnterior     = null;
+        TLC.timerAnterior    = 0;
+        TLC.totalAnterior    = 0;
+        TLC.pausadoAnterior  = false;
+        TLC.modo             = "MANUAL";
+        TLC.zonaActiva       = zona;
+        TLC.timerRestante    = timerGuardado;
+        TLC.timerTotal       = totalGuardado;
+
+        if (estabaPausado) {
+          // Programa estaba pausado — volver a estado pausado, NO arrancar bomba
+          TLC.pausado      = true;
+          TLC.hw.bomba     = "OFF";
+          _pushEstado();
+          mostrarToast("✅ Tanque lleno — Zona " + zona + " en pausa (" + formatSegundos(timerGuardado) + " restantes)", "warning");
+        } else {
+          // Estaba corriendo — reanudar normalmente
+          TLC.pausado      = false;
+          TLC.hw.bomba     = "RUNNING";
+          enviarComando("/api/zona",  { zona, accion: "ABRIR" });
+          enviarComando("/api/bomba", { accion: "ON" });
+          iniciarCicloTimer();
+          _pushEstado();
+          mostrarToast("✅ Tanque lleno — retomando Zona " + zona + " (" + formatSegundos(timerGuardado) + " restantes)", "success");
+        }
         if (typeof renderMonitor === "function") renderMonitor();
       }, 500);
     } else {
