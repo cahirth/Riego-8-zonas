@@ -1,5 +1,5 @@
 // ============================================================
-//  TLC RIEGO HIDRÁULICO — app.js  v2.4
+//  TLC RIEGO HIDRÁULICO — app.js  v2.5
 //  Motor de lógica, estado global y comunicación ESP32
 //  v1.1: Mock offline automático
 //  v1.2: Toggle zona manual, prioridad absoluta flotante
@@ -14,7 +14,7 @@
 "use strict";
 
 // ─── VERSIÓN ─────────────────────────────────────────────────
-const APP_VERSION = { app: "v2.4", monitor: "v2.4", config: "v2.4" };
+const APP_VERSION = { app: "v2.5", monitor: "v2.5", config: "v2.5" };
 
 (function _bannerConsola() {
   console.log("%c TLC Riego Hidráulico ", "background:#0066CC;color:#fff;font-weight:700;font-size:13px;border-radius:4px;padding:3px 10px");
@@ -306,9 +306,9 @@ function activarZonaManual(zona) {
     mostrarToast("⚠️ Llenado en curso — zonas deshabilitadas.", "warning");
     return;
   }
-  // Si hay programa activo — solo parpadear, sin acción
-  if (TLC.programaActivo !== null && !TLC.pausado) {
-    mostrarToast("⚠️ Programa en curso — usá Pausar o Detener primero.", "warning");
+  // Bloquear siempre que haya programa activo — corriendo O pausado
+  if (TLC.programaActivo !== null) {
+    mostrarToast("⚠️ Programa " + (TLC.pausado ? "pausado" : "en curso") + " — usá Detener primero.", "warning");
     return;
   }
   if (TLC.zonaActiva === zona && TLC.modo === "MANUAL") {
@@ -319,7 +319,7 @@ function activarZonaManual(zona) {
   detenerCiclo(true);
   TLC.modo           = "MANUAL";
   TLC.zonaActiva     = zona;
-  TLC.programaActivo = null;   // zona manual, no programa
+  TLC.programaActivo = null;
   TLC.pausado        = false;
   TLC.timerTotal     = TLC.tiempoManualGlobalConfigurado * 60;
   TLC.timerRestante  = TLC.timerTotal;

@@ -473,7 +473,7 @@ input[type=range]::-webkit-slider-thumb {
     </div>
     <div>
       <div class="hdr-title">Riego Hidráulico TLC</div>
-      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.4</span></div>
+      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.5</span></div>
     </div>
   </div>
   <a href="config.html" class="btn-cfg">
@@ -703,9 +703,9 @@ function renderZonas() {
     const cLine  = activo ? "#00C896" : "#3A5F80";   // color espiras
     const btn = document.createElement("button");
     btn.className = "zone-btn" +
-      (activo        ? " active"          : "") +
-      (bloqueado     ? " locked"          : "") +
-      (!activo && TLC.programaActivo !== null && !TLC.pausado && !bloqueado ? " programa-activo" : "");
+      (activo    ? " active"          : "") +
+      (bloqueado ? " locked"          : "") +
+      (!activo && TLC.programaActivo !== null && !bloqueado ? " programa-activo" : "");
     btn.id = "zone-btn-" + z;
     btn.innerHTML =
       "<div class='zone-active-ring'></div>" +
@@ -828,7 +828,10 @@ function renderProgramas() {
     card.innerHTML =
       "<div class='prog-head'>" +
         "<div>" +
-          "<div class='prog-name'>" + prog.nombre + (esActivo && !esPausado ? " <span style='font-size:11px;color:var(--c-cobalt);font-family:var(--c-mono);'>▶ " + formatSegundos(TLC.timerRestante) + "</span>" : "") + (esPausado ? " <span style='font-size:11px;color:var(--c-amber);font-family:var(--c-mono);'>⏸ " + formatSegundos(TLC.timerRestante) + "</span>" : "") + "</div>" +
+          "<div class='prog-name'>" + prog.nombre +
+            (esActivo  ? " <span class='prog-countdown' style='font-size:11px;color:var(--c-cobalt);font-family:var(--c-mono);'>▶ " + formatSegundos(TLC.timerRestante) + "</span>" : "") +
+            (esPausado ? " <span class='prog-countdown' style='font-size:11px;color:var(--c-amber);font-family:var(--c-mono);'>⏸ " + formatSegundos(TLC.timerRestante) + "</span>" : "") +
+          "</div>" +
           "<div class='prog-meta'>🕐 " + prog.horaInicio + " &nbsp;|&nbsp; " + prog.dias.join(", ") + "</div>" +
           vigBadge +
         "</div>" +
@@ -940,15 +943,15 @@ function actualizarStatusBanner() {
 }
 
 function actualizarTimerUI() {
-  const block    = document.getElementById("timer-block");
-  const valEl    = document.getElementById("timer-val");
-  const fillEl   = document.getElementById("progress-fill");
-  const labelEl  = document.getElementById("timer-label");
+  const block   = document.getElementById("timer-block");
+  const valEl   = document.getElementById("timer-val");
+  const fillEl  = document.getElementById("progress-fill");
+  const labelEl = document.getElementById("timer-label");
   if (!block) return;
   const activo = TLC.modo === "MANUAL" && TLC.timerRestante > 0 && !TLC.pausado;
   block.classList.toggle("visible", activo || TLC.pausado);
   if (activo || TLC.pausado) {
-    valEl.textContent   = formatSegundos(TLC.timerRestante);
+    valEl.textContent  = formatSegundos(TLC.timerRestante);
     const sufijo = TLC.programaActivo !== null
       ? (TLC.pausado ? "⏸ Pausado · Zona " : "▶ Programa · Zona ") + TLC.zonaActiva
       : "restante · Zona " + TLC.zonaActiva;
@@ -959,9 +962,10 @@ function actualizarTimerUI() {
       ? "linear-gradient(90deg, var(--c-amber) 0%, #F59E0B 100%)"
       : "linear-gradient(90deg, var(--c-cobalt) 0%, var(--c-green) 100%)";
   }
-  // Refrescar tarjetas de programa para mostrar countdown
+  // Actualizar solo el countdown inline en la tarjeta — sin re-renderizar todo el DOM
   if (TLC.programaActivo !== null) {
-    if (typeof renderProgramas === "function") renderProgramas();
+    const spans = document.querySelectorAll(".prog-countdown");
+    spans.forEach(s => { s.textContent = formatSegundos(TLC.timerRestante); });
   }
 }
 
