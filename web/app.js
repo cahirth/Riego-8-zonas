@@ -280,7 +280,9 @@ function _mostrarBannerOffline(visible) {
 
 // ─── FLOTANTE (prioridad absoluta) ───────────────────────────
 function _chequearFlotante() {
-  if (TLC.hw.flotante === "DEMANDA" && TLC.modo !== "LLENANDO") {
+  if (TLC.hw.flotante === "DEMANDA"
+      && TLC.modo !== "LLENANDO"
+      && !TLC._tanqueInterval) {   // guard: no disparar si ya hay timer de tanque corriendo
     iniciarLlenadoTanque(TLC.modo !== "STANDBY");
   }
 }
@@ -456,6 +458,8 @@ function simularFlotante() {
     TLC.hw.flotante === "DEMANDA" ? "⚠️ Flotante simulado: DEMANDA DE AGUA" : "✅ Flotante simulado: TANQUE OK",
     TLC.hw.flotante === "DEMANDA" ? "warning" : "success"
   );
+  // Chequear inmediatamente — no esperar al próximo poll
+  _chequearFlotante();
 }
 
 function forzarLlenadoManual() {
