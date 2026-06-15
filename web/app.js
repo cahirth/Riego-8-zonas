@@ -1,16 +1,17 @@
 // ============================================================
-//  TLC RIEGO HIDRÁULICO — app.js  v2.0
+//  TLC RIEGO HIDRÁULICO — app.js  v2.1
 //  Motor de lógica, estado global y comunicación ESP32
 //  v1.1: Mock offline automático
 //  v1.2: Toggle zona manual, prioridad absoluta flotante
 //  v1.3: Banner consola, vigencia programas, bloqueo llenado, sliders +/-
-//  v2.0: Firebase Realtime DB — sincronización multi-dispositivo en tiempo real
+//  v2.0: Firebase Realtime DB — sincronización multi-dispositivo
+//  v2.1: Timer exacto preservado al interrumpir por llenado de tanque
 // ============================================================
 
 "use strict";
 
 // ─── VERSIÓN ─────────────────────────────────────────────────
-const APP_VERSION = { app: "v2.0", monitor: "v2.0", config: "v2.0" };
+const APP_VERSION = { app: "v2.1", monitor: "v2.1", config: "v2.1" };
 
 (function _bannerConsola() {
   console.log("%c TLC Riego Hidráulico ", "background:#0066CC;color:#fff;font-weight:700;font-size:13px;border-radius:4px;padding:3px 10px");
@@ -57,6 +58,8 @@ let TLC = {
   modo:          "STANDBY",
   zonaActiva:    null,
   zonaAnterior:  null,
+  timerAnterior: 0,     // timer exacto guardado al interrumpir por tanque
+  totalAnterior: 0,     // timerTotal guardado para restaurar la barra de progreso
   timerRestante: 0,
   timerTotal:    0,
   tanqueTimer:   0,
@@ -346,12 +349,16 @@ function iniciarCicloTimer() {
 // ─── LLENADO DE TANQUE ───────────────────────────────────────
 function iniciarLlenadoTanque(esRetorno = false) {
   if (esRetorno) {
-    TLC.zonaAnterior = TLC.zonaActiva;
+    TLC.zonaAnterior   = TLC.zonaActiva;
+    TLC.timerAnterior  = TLC.timerRestante;   // ← guardar timer exacto
+    TLC.totalAnterior  = TLC.timerTotal;      // ← guardar total para la barra
     clearInterval(TLC._cicloInterval);
     TLC._cicloInterval = null;
-    mostrarToast("⚠️ Tanque sin agua — pausando riego...", "warning");
+    mostrarToast("⚠️ Tanque sin agua — pausando riego en " + formatSegundos(TLC.timerRestante) + "...", "warning");
   } else {
-    TLC.zonaAnterior = null;
+    TLC.zonaAnterior  = null;
+    TLC.timerAnterior = 0;
+    TLC.totalAnterior = 0;
     mostrarToast("⚠️ Flotante: demanda — iniciando llenado...", "warning");
   }
   TLC.modo          = "LLENANDO";
@@ -411,16 +418,22 @@ function detenerLlenado(retornar) {
 
     if (retornar && TLC.zonaAnterior !== null) {
       setTimeout(() => {
-        const zona = TLC.zonaAnterior;
-        TLC.zonaAnterior = null;
-        TLC.modo         = "MANUAL";
-        TLC.zonaActiva   = zona;
-        TLC.hw.bomba     = "RUNNING";
+        const zona          = TLC.zonaAnterior;
+        const timerGuardado = TLC.timerAnterior || 0;
+        const totalGuardado = TLC.totalAnterior || timerGuardado;
+        TLC.zonaAnterior   = null;
+        TLC.timerAnterior  = 0;
+        TLC.totalAnterior  = 0;
+        TLC.modo           = "MANUAL";
+        TLC.zonaActiva     = zona;
+        TLC.timerRestante  = timerGuardado;   // ← retomar exactamente donde quedó
+        TLC.timerTotal     = totalGuardado;
+        TLC.hw.bomba       = "RUNNING";
         enviarComando("/api/zona",  { zona, accion: "ABRIR" });
         enviarComando("/api/bomba", { accion: "ON" });
         iniciarCicloTimer();
         _pushEstado();
-        mostrarToast("✅ Tanque lleno — retomando Zona " + zona, "success");
+        mostrarToast("✅ Tanque lleno — retomando Zona " + zona + " (" + formatSegundos(timerGuardado) + " restantes)", "success");
         if (typeof renderMonitor === "function") renderMonitor();
       }, 500);
     } else {
