@@ -214,22 +214,40 @@ body {
 .cmd-sync:hover   { filter: brightness(1.1); }
 .cmd-sim    { background: var(--c-amber);  color: #1a0e00; }
 .cmd-sim:hover    { filter: brightness(1.1); }
+/* ── BOTÓN LLUVIA INDUSTRIAL ── */
 .cmd-lluvia {
-  background: #1a0505;
-  color: #7A2020;
-  border: 1px solid #5A1515;
+  background: linear-gradient(135deg, #2A0808 0%, #1a0404 100%);
+  color: #8B3030;
+  border: 1px solid #4A1515;
+  box-shadow: inset 0 1px 0 rgba(255,100,100,.08), 0 2px 4px rgba(0,0,0,.4);
 }
-.cmd-lluvia:hover { background: #2A0A0A; filter: brightness(1.2); }
+.cmd-lluvia:hover {
+  background: linear-gradient(135deg, #3A0A0A 0%, #220606 100%);
+  color: #AA4040;
+  border-color: #6A2020;
+  filter: none;
+}
 .cmd-lluvia.activo {
-  background: #0f2a4a;
-  color: #60a5fa;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59,130,246,.25), 0 0 12px rgba(59,130,246,.15);
-  animation: lluvia-pulse 1.8s ease-in-out infinite;
+  background: linear-gradient(135deg, #8B0000 0%, #CC0000 50%, #AA0000 100%);
+  color: #FFD0D0;
+  border-color: #FF3333;
+  box-shadow:
+    inset 0 1px 0 rgba(255,200,200,.25),
+    0 0 12px rgba(220,0,0,.5),
+    0 0 24px rgba(220,0,0,.25),
+    0 2px 4px rgba(0,0,0,.4);
+  animation: lluvia-pulse 1.4s ease-in-out infinite;
 }
+.cmd-lluvia.activo:hover { filter: brightness(1.1); }
 @keyframes lluvia-pulse {
-  0%,100% { box-shadow: 0 0 0 2px rgba(59,130,246,.25), 0 0 12px rgba(59,130,246,.15); }
-  50%      { box-shadow: 0 0 0 4px rgba(59,130,246,.15), 0 0 20px rgba(59,130,246,.25); }
+  0%,100% {
+    box-shadow: inset 0 1px 0 rgba(255,200,200,.25),
+      0 0 12px rgba(220,0,0,.5), 0 0 24px rgba(220,0,0,.25), 0 2px 4px rgba(0,0,0,.4);
+  }
+  50% {
+    box-shadow: inset 0 1px 0 rgba(255,200,200,.3),
+      0 0 20px rgba(255,0,0,.7), 0 0 40px rgba(255,0,0,.35), 0 2px 4px rgba(0,0,0,.4);
+  }
 }
 
 /* ── GRILLA DE ZONAS ── */
@@ -511,7 +529,7 @@ input[type=range]::-webkit-slider-thumb {
     </div>
     <div>
       <div class="hdr-title">Riego Hidráulico TLC</div>
-      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.11</span></div>
+      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.12</span></div>
     </div>
   </div>
   <a href="config.html" class="btn-cfg">

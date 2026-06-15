@@ -1,5 +1,5 @@
 // ============================================================
-//  TLC RIEGO HIDRÁULICO — app.js  v2.10
+//  TLC RIEGO HIDRÁULICO — app.js  v2.12
 //  Motor de lógica, estado global y comunicación ESP32
 //  v1.1: Mock offline automático
 //  v1.2: Toggle zona manual, prioridad absoluta flotante
@@ -8,13 +8,21 @@
 //  v2.1: Timer exacto preservado al interrumpir por llenado de tanque
 //  v2.2: Fix zona queda activa al terminar timer — push Firebase + render forzado
 //  v2.3: Fix zona enganchada multi-dispositivo — Firebase null→0, STANDBY forzado
-//  v2.4: Pausar/Reanudar/Detener programa, zona parpadeante sin acción durante programa — Firebase null→0, STANDBY forzado
+//  v2.4: Pausar/Reanudar/Detener programa, zona parpadeante sin acción
+//  v2.5: Fix zona manual anula programa pausado, fix doble click pausar
+//  v2.6: Preservar estado pausa al interrumpir por llenado de tanque
+//  v2.7: Motor secuencia multi-zona con sentinel anti-loop
+//  v2.8: Timer timeout tanque, push notifications, sensor lluvia, bloqueo programas
+//  v2.9: Fix multi-zona cuelgue, Firebase sync programaActivo/pausado, fix Ejecutar
+//  v2.10: Firebase fuente de verdad para config — _aplicarConfigUI en todos los dispositivos
+//  v2.11: Fix pausa no detiene timer, barra progreso por zona, botón lluvia industrial
+//  v2.12: Sensor lluvia persistido en /tlc/config + /tlc/estado, botón lluvia rojo industrial
 // ============================================================
 
 "use strict";
 
 // ─── VERSIÓN ─────────────────────────────────────────────────
-const APP_VERSION = { app: "v2.11", monitor: "v2.11", config: "v2.11" };
+const APP_VERSION = { app: "v2.12", monitor: "v2.12", config: "v2.12" };
 
 (function _bannerConsola() {
   console.log("%c TLC Riego Hidráulico ", "background:#0066CC;color:#fff;font-weight:700;font-size:13px;border-radius:4px;padding:3px 10px");
@@ -169,6 +177,7 @@ function _escucharFirebase() {
     if (data.timeoutTanqueConfigurado      !== undefined) TLC.timeoutTanqueConfigurado     = data.timeoutTanqueConfigurado;
     if (data.tiempoManualGlobalConfigurado !== undefined) TLC.tiempoManualGlobalConfigurado = data.tiempoManualGlobalConfigurado;
     if (data.ajusteEstacionalTLC           !== undefined) TLC.ajusteEstacionalTLC          = data.ajusteEstacionalTLC;
+    if (data.sensorLluvia                  !== undefined) TLC.sensorLluvia                 = data.sensorLluvia;
     // Actualizar localStorage con los valores de Firebase (fuente de verdad)
     guardarEstado();
     // Notificar a la UI que la config cambió
@@ -200,19 +209,17 @@ function _pushEstado() {
 // ─── SENSOR DE LLUVIA ─────────────────────────────────────────
 function toggleSensorLluvia() {
   TLC.sensorLluvia = !TLC.sensorLluvia;
-  _pushEstado();
+  _pushEstado();      // → /tlc/estado  (tiempo real)
+  guardarEstado();    // → /tlc/config  (persistente)
   if (TLC.sensorLluvia) {
-    // Si hay riego activo, detenerlo — el tanque sigue operativo
-    if (TLC.modo === "MANUAL") {
-      detenerCiclo();
-    }
+    if (TLC.modo === "MANUAL") detenerCiclo();
     mostrarToast("🌧 Sensor lluvia ACTIVO — riego inhibido", "warning");
     _enviarNotificacion("🌧 Sensor de Lluvia", "Riego inhibido por lluvia. El tanque sigue operativo.");
   } else {
     mostrarToast("☀️ Sensor lluvia desactivado — riego habilitado", "success");
     _enviarNotificacion("☀️ Sensor de Lluvia", "Riego habilitado nuevamente.");
   }
-  if (typeof renderMonitor   === "function") renderMonitor();
+  if (typeof renderMonitor      === "function") renderMonitor();
   if (typeof actualizarHWBadges === "function") actualizarHWBadges();
 }
 
@@ -223,6 +230,7 @@ function guardarEstado() {
     timeoutTanqueConfigurado:      TLC.timeoutTanqueConfigurado,
     tiempoManualGlobalConfigurado: TLC.tiempoManualGlobalConfigurado,
     ajusteEstacionalTLC:           TLC.ajusteEstacionalTLC,
+    sensorLluvia:                  TLC.sensorLluvia,   // ← persistir en config
   };
   // localStorage como backup offline
   try { localStorage.setItem("TLC_RIEGO_MULTI_DATA", JSON.stringify(datos)); } catch(e) {}
