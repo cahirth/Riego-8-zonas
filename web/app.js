@@ -1,5 +1,5 @@
 // ============================================================
-//  TLC RIEGO HIDRÁULICO — app.js  v2.9
+//  TLC RIEGO HIDRÁULICO — app.js  v2.10
 //  Motor de lógica, estado global y comunicación ESP32
 //  v1.1: Mock offline automático
 //  v1.2: Toggle zona manual, prioridad absoluta flotante
@@ -14,7 +14,7 @@
 "use strict";
 
 // ─── VERSIÓN ─────────────────────────────────────────────────
-const APP_VERSION = { app: "v2.9", monitor: "v2.9", config: "v2.9" };
+const APP_VERSION = { app: "v2.10", monitor: "v2.10", config: "v2.10" };
 
 (function _bannerConsola() {
   console.log("%c TLC Riego Hidráulico ", "background:#0066CC;color:#fff;font-weight:700;font-size:13px;border-radius:4px;padding:3px 10px");
@@ -164,8 +164,12 @@ function _escucharFirebase() {
     if (data.timeoutTanqueConfigurado      !== undefined) TLC.timeoutTanqueConfigurado     = data.timeoutTanqueConfigurado;
     if (data.tiempoManualGlobalConfigurado !== undefined) TLC.tiempoManualGlobalConfigurado = data.tiempoManualGlobalConfigurado;
     if (data.ajusteEstacionalTLC           !== undefined) TLC.ajusteEstacionalTLC          = data.ajusteEstacionalTLC;
-    if (typeof renderProgramas === "function") renderProgramas();
-    if (typeof renderProgList  === "function") renderProgList();
+    // Actualizar localStorage con los valores de Firebase (fuente de verdad)
+    guardarEstado();
+    // Notificar a la UI que la config cambió
+    if (typeof _aplicarConfigUI  === "function") _aplicarConfigUI();
+    if (typeof renderProgramas   === "function") renderProgramas();
+    if (typeof renderProgList    === "function") renderProgList();
     if (typeof renderEstacionalChips === "function") renderEstacionalChips();
   });
 }

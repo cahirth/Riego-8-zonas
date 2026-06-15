@@ -371,7 +371,7 @@ input[type=range]::-webkit-slider-thumb {
     </div>
     <div>
       <div class="hdr-title">Configuración TLC</div>
-      <div class="hdr-sub">Cronogramas y Ajustes &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.9</span></div>
+      <div class="hdr-sub">Cronogramas y Ajustes &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.10</span></div>
     </div>
   </div>
   <a href="monitor.html" class="btn-back">
@@ -668,16 +668,14 @@ function guardarYSincronizar() {
   sincronizarFlash();
 }
 
-// ── BOOT ────────────────────────────────────────────────────
-document.addEventListener("DOMContentLoaded", () => {
-  inicializarApp();
-
-  // Sliders de config
+// ── CONFIG UI SYNC (Firebase → sliders) ─────────────────────
+function _aplicarConfigUI() {
   const slEst = document.getElementById("slider-est");
   const slTO  = document.getElementById("slider-timeout");
   if (slEst) {
     slEst.value = TLC.ajusteEstacionalTLC;
-    document.getElementById("est-val").textContent = TLC.ajusteEstacionalTLC + "%";
+    const estEl = document.getElementById("est-val");
+    if (estEl) estEl.textContent = TLC.ajusteEstacionalTLC + "%";
   }
   if (slTO) {
     slTO.value = TLC.timeoutTanqueConfigurado;
@@ -685,6 +683,15 @@ document.addEventListener("DOMContentLoaded", () => {
     if (toEl) toEl.textContent = TLC.timeoutTanqueConfigurado === 0 ? "OFF" : TLC.timeoutTanqueConfigurado + "m";
   }
   renderProgList();
+  renderEstacionalChips();
+}
+
+// ── BOOT ────────────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+  inicializarApp();
+  // Sliders se sincronizan cuando Firebase responde via _aplicarConfigUI
+  // Mientras tanto usar localStorage como valor inicial
+  _aplicarConfigUI();
 });
 </script>
 </body>

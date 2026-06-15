@@ -476,7 +476,7 @@ input[type=range]::-webkit-slider-thumb {
     </div>
     <div>
       <div class="hdr-title">Riego Hidráulico TLC</div>
-      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.9</span></div>
+      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.10</span></div>
     </div>
   </div>
   <a href="config.html" class="btn-cfg">
@@ -734,6 +734,18 @@ function actualizarBtnLluvia() {
     btn.classList.remove("activo");
     label.textContent = "Sensor Lluvia";
   }
+}
+
+// ── CONFIG UI SYNC (Firebase → sliders) ─────────────────────
+// Se llama cada vez que Firebase actualiza la config
+function _aplicarConfigUI() {
+  const sliderM = document.getElementById("slider-manual");
+  const dispM   = document.getElementById("manual-time-disp");
+  if (sliderM && dispM) {
+    sliderM.value        = TLC.tiempoManualGlobalConfigurado;
+    dispM.textContent    = TLC.tiempoManualGlobalConfigurado + "m";
+  }
+  renderProgramas();
 }
 
 // ── RENDER MONITOR ──────────────────────────────────────────
