@@ -476,7 +476,7 @@ input[type=range]::-webkit-slider-thumb {
     </div>
     <div>
       <div class="hdr-title">Riego Hidráulico TLC</div>
-      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.8</span></div>
+      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.9</span></div>
     </div>
   </div>
   <a href="config.html" class="btn-cfg">
@@ -875,12 +875,14 @@ function renderProgramas() {
           "Detener" +
         "</button>";
     } else {
-      // Inactivo → Ejecutar (bloqueado si hay programa activo, llenando, lluvia o fuera de vigencia)
-      const bloqEjec = bloqueado || !vigente || TLC.sensorLluvia || (TLC.programaActivo !== null);
+      // Inactivo → Ejecutar
+      // Bloquear si: llenando, fuera de vigencia, lluvia activa, o HAY OTRO programa corriendo
+      const otroProgActivo = TLC.programaActivo !== null && TLC.programaActivo !== idx;
+      const bloqEjec = bloqueado || !vigente || TLC.sensorLluvia || otroProgActivo;
       const clsExec  = "btn-exec" + (bloqEjec ? " locked" : "");
       let labelEjec  = vigente ? "Ejecutar" : "Inactivo";
-      if (vigente && TLC.sensorLluvia)           labelEjec = "🌧 Inhibido";
-      if (vigente && TLC.programaActivo !== null) labelEjec = "⏳ Ocupado";
+      if (vigente && TLC.sensorLluvia)  labelEjec = "🌧 Inhibido";
+      if (vigente && otroProgActivo)    labelEjec = "⏳ Ocupado";
       botonesHTML =
         "<button class='" + clsExec + "' onclick='ejecutarPrograma(" + idx + ")'>" +
           "<svg viewBox='0 0 16 16' width='14' height='14' fill='currentColor'><path d='M4 2l10 6-10 6V2z'/></svg>" +

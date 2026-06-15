@@ -1,5 +1,5 @@
 // ============================================================
-//  TLC RIEGO HIDRÁULICO — app.js  v2.8
+//  TLC RIEGO HIDRÁULICO — app.js  v2.9
 //  Motor de lógica, estado global y comunicación ESP32
 //  v1.1: Mock offline automático
 //  v1.2: Toggle zona manual, prioridad absoluta flotante
@@ -14,7 +14,7 @@
 "use strict";
 
 // ─── VERSIÓN ─────────────────────────────────────────────────
-const APP_VERSION = { app: "v2.8", monitor: "v2.8", config: "v2.8" };
+const APP_VERSION = { app: "v2.9", monitor: "v2.9", config: "v2.9" };
 
 (function _bannerConsola() {
   console.log("%c TLC Riego Hidráulico ", "background:#0066CC;color:#fff;font-weight:700;font-size:13px;border-radius:4px;padding:3px 10px");
@@ -127,6 +127,9 @@ function _escucharFirebase() {
     }
 
     if (data.sensorLluvia !== undefined) TLC.sensorLluvia = data.sensorLluvia;
+    // -1 significa sin programa activo
+    if (data.programaActivo !== undefined) TLC.programaActivo = data.programaActivo === -1 ? null : data.programaActivo;
+    if (data.pausado        !== undefined) TLC.pausado        = data.pausado;
 
     // Refrescar UI
     if (typeof actualizarHWBadges     === "function") actualizarHWBadges();
@@ -172,14 +175,16 @@ function _pushEstado() {
   if (!_refEstado) return;
   TLC._ignorarPush = true;
   _refEstado.set({
-    hw:            { flotante: TLC.hw.flotante, valvula: TLC.hw.valvula, bomba: TLC.hw.bomba },
-    modo:          TLC.modo,
-    zonaActiva:    TLC.zonaActiva    || 0,
-    timerRestante: TLC.timerRestante || 0,
-    timerTotal:    TLC.timerTotal    || 0,
-    tanqueTimer:   TLC.tanqueTimer   || 0,
-    sensorLluvia:  TLC.sensorLluvia  || false,
-    ts:            Date.now(),
+    hw:             { flotante: TLC.hw.flotante, valvula: TLC.hw.valvula, bomba: TLC.hw.bomba },
+    modo:           TLC.modo,
+    zonaActiva:     TLC.zonaActiva    || 0,
+    timerRestante:  TLC.timerRestante > 0 ? TLC.timerRestante : 0,
+    timerTotal:     TLC.timerTotal    || 0,
+    tanqueTimer:    TLC.tanqueTimer   || 0,
+    sensorLluvia:   TLC.sensorLluvia  || false,
+    programaActivo: TLC.programaActivo !== null ? TLC.programaActivo : -1,  // -1 = sin programa
+    pausado:        TLC.pausado       || false,
+    ts:             Date.now(),
   }).catch(e => console.warn("[TLC] Firebase push error:", e.message));
 }
 
@@ -387,11 +392,13 @@ function activarZonaManual(zona) {
 function iniciarCicloTimer() {
   clearInterval(TLC._cicloInterval);
   TLC._cicloInterval = setInterval(() => {
-    if (TLC.timerRestante <= 0) {
-      // Antes de detener, verificar si hay siguiente zona en el programa
+    // Sentinel -1: transición entre zonas en curso, ignorar tick
+    if (TLC.timerRestante < 0) return;
+    if (TLC.timerRestante === 0) {
       if (!_avanzarSiguienteZona()) {
         detenerCiclo();
         mostrarToast("✅ Programa completado.", "success");
+        _enviarNotificacion("✅ Programa completado", "Todas las zonas finalizadas.", "✅");
       }
       return;
     }
@@ -413,19 +420,21 @@ function _avanzarSiguienteZona() {
   if (!prog) return false;
 
   // Buscar la siguiente zona a partir de la actual (zonaActiva es 1-based)
-  const idxActual = TLC.zonaActiva - 1;
-  let idxSiguiente = -1;
+  const idxActual    = prog.zonas.findIndex(z => z.zona === TLC.zonaActiva);
+  let   idxSiguiente = -1;
   for (let i = idxActual + 1; i < prog.zonas.length; i++) {
     if (prog.zonas[i].minutos > 0) { idxSiguiente = i; break; }
   }
 
   if (idxSiguiente === -1) return false;  // no hay más zonas
 
-  // Cerrar zona actual antes de abrir la siguiente
-  const siguienteZona    = prog.zonas[idxSiguiente].zona;
-  const minutosFinales   = minutosConAjuste(prog.zonas[idxSiguiente].minutos);
+  const siguienteZona  = prog.zonas[idxSiguiente].zona;
+  const minutosFinales = minutosConAjuste(prog.zonas[idxSiguiente].minutos);
+
+  // Detener ciclo actual SIN resetear programaActivo
   clearInterval(TLC._cicloInterval);
   TLC._cicloInterval = null;
+  TLC.timerRestante  = -1;   // sentinel para evitar re-entrada durante el setTimeout
 
   enviarComando("/api/zonas", { accion: "CERRAR_TODAS" });
 
@@ -439,8 +448,9 @@ function _avanzarSiguienteZona() {
     _pushEstado();
     iniciarCicloTimer();
     mostrarToast("💧 Zona " + siguienteZona + " — " + minutosFinales + "m", "success");
+    _enviarNotificacion("Zona " + siguienteZona, "Continuando programa — " + minutosFinales + " minutos.", "💧");
     if (typeof renderMonitor === "function") renderMonitor();
-  }, 800);  // 800ms de pausa entre zonas para que la válvula cierre antes de abrir la siguiente
+  }, 800);
 
   return true;
 }
