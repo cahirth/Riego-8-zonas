@@ -371,7 +371,7 @@ input[type=range]::-webkit-slider-thumb {
     </div>
     <div>
       <div class="hdr-title">Configuración TLC</div>
-      <div class="hdr-sub">Cronogramas y Ajustes &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.11</span></div>
+      <div class="hdr-sub">Cronogramas y Ajustes &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.14</span></div>
     </div>
   </div>
   <a href="monitor.html" class="btn-back">
@@ -416,6 +416,24 @@ input[type=range]::-webkit-slider-thumb {
     </div>
     <div class="cfg-desc">
       Si el flotante no detecta saturación dentro de este límite, el sistema aborta el llenado por falla crítica y emite alerta. Poner en 0 para deshabilitar.
+    </div>
+  </div>
+
+  <!-- TIEMPO ACTIVACIÓN MANUAL -->
+  <div class="cfg-card">
+    <div class="section-title">Tiempo de Activación Manual</div>
+    <div class="cfg-row">
+      <div class="cfg-label">Duración por zona</div>
+      <div class="slider-row">
+        <button class="btn-pm" onclick="ajustarSlider('slider-manual','manual-val',-1,1,60,'m')">−</button>
+        <input type="range" id="slider-manual" min="1" max="60" step="1" value="10"
+          oninput="onManualChange(+this.value)"/>
+        <button class="btn-pm" onclick="ajustarSlider('slider-manual','manual-val',+1,1,60,'m')">+</button>
+      </div>
+      <div class="cfg-val" id="manual-val">10m</div>
+    </div>
+    <div class="cfg-desc">
+      Tiempo de apertura al activar una zona manualmente desde el panel de monitoreo. Se aplica a todas las zonas por igual.
     </div>
   </div>
 
@@ -490,10 +508,24 @@ function onTimeoutChange(val) {
   document.getElementById("timeout-val").textContent = val === 0 ? "OFF" : val + "m";
 }
 
+function onManualChange(val) {
+  TLC.tiempoManualGlobalConfigurado = val;
+  document.getElementById("manual-val").textContent = val + "m";
+  guardarEstado();
+}
+
 // ── RENDER PROGRAMAS ─────────────────────────────────────────
 function renderProgList() {
   const lista = document.getElementById("prog-list");
   if (!lista) return;
+
+  // Guardar qué items están abiertos antes de re-renderizar
+  const abiertos = new Set();
+  lista.querySelectorAll(".prog-item.open").forEach(el => {
+    const idx = el.id.replace("prog-item-", "");
+    abiertos.add(+idx);
+  });
+
   lista.innerHTML = "";
   if (TLC.programas.length === 0) {
     lista.innerHTML = '<p style="color:var(--c-muted);font-size:13px;">Sin programas. Presioná "Nuevo Programa".</p>';
@@ -594,6 +626,9 @@ function renderProgList() {
         diasRow.appendChild(tag);
       });
     }
+
+    // Restaurar estado abierto si estaba abierto antes del re-render
+    if (abiertos.has(idx)) item.classList.add("open");
   });
   renderEstacionalChips();
 }
@@ -672,6 +707,7 @@ function guardarYSincronizar() {
 function _aplicarConfigUI() {
   const slEst = document.getElementById("slider-est");
   const slTO  = document.getElementById("slider-timeout");
+  const slMan = document.getElementById("slider-manual");
   if (slEst) {
     slEst.value = TLC.ajusteEstacionalTLC;
     const estEl = document.getElementById("est-val");
@@ -681,6 +717,11 @@ function _aplicarConfigUI() {
     slTO.value = TLC.timeoutTanqueConfigurado;
     const toEl = document.getElementById("timeout-val");
     if (toEl) toEl.textContent = TLC.timeoutTanqueConfigurado === 0 ? "OFF" : TLC.timeoutTanqueConfigurado + "m";
+  }
+  if (slMan) {
+    slMan.value = TLC.tiempoManualGlobalConfigurado;
+    const manEl = document.getElementById("manual-val");
+    if (manEl) manEl.textContent = TLC.tiempoManualGlobalConfigurado + "m";
   }
   renderProgList();
   renderEstacionalChips();

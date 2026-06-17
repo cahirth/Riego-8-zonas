@@ -1,5 +1,5 @@
 // ============================================================
-//  TLC RIEGO HIDRÁULICO — app.js  v2.12
+//  TLC RIEGO HIDRÁULICO — app.js  v2.13
 //  Motor de lógica, estado global y comunicación ESP32
 //  v1.1: Mock offline automático
 //  v1.2: Toggle zona manual, prioridad absoluta flotante
@@ -22,7 +22,7 @@
 "use strict";
 
 // ─── VERSIÓN ─────────────────────────────────────────────────
-const APP_VERSION = { app: "v2.12", monitor: "v2.12", config: "v2.12" };
+const APP_VERSION = { app: "v2.14", monitor: "v2.14", config: "v2.14" };
 
 (function _bannerConsola() {
   console.log("%c TLC Riego Hidráulico ", "background:#0066CC;color:#fff;font-weight:700;font-size:13px;border-radius:4px;padding:3px 10px");

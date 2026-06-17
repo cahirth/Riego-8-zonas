@@ -439,6 +439,15 @@ input[type=range]::-webkit-slider-thumb {
   pointer-events: none;
   animation: zone-blink 1.5s ease-in-out infinite;
 }
+/* Zona anterior pausada durante llenado de tanque — ámbar estático, sin acción */
+.zone-btn.zona-pausada {
+  border-color: var(--c-amber);
+  background: rgba(245,158,11,.08);
+  cursor: not-allowed;
+  pointer-events: none;
+  opacity: .85;
+}
+.zone-btn.zona-pausada .z-num { color: var(--c-amber); }
 @keyframes zone-blink {
   0%,100% { box-shadow: 0 0 0 2px rgba(0,102,204,.4); }
   50%      { box-shadow: 0 0 0 6px rgba(0,102,204,.08); }
@@ -529,7 +538,7 @@ input[type=range]::-webkit-slider-thumb {
     </div>
     <div>
       <div class="hdr-title">Riego Hidráulico TLC</div>
-      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.13</span></div>
+      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.14</span></div>
     </div>
   </div>
   <a href="config.html" class="btn-cfg">
@@ -713,18 +722,6 @@ input[type=range]::-webkit-slider-thumb {
     </div>
   </div>
 
-  <!-- TIEMPO MANUAL -->
-  <div class="manual-time-card">
-    <div class="manual-time-label">Tiempo Activación Manual</div>
-    <div class="slider-row">
-      <button class="btn-pm" onclick="ajustarSlider('slider-manual','manual-time-disp',-1,1,60,'m')">−</button>
-      <input type="range" id="slider-manual" min="1" max="60" value="10"
-        oninput="TLC.tiempoManualGlobalConfigurado=+this.value; document.getElementById('manual-time-disp').textContent=this.value+'m'; guardarEstado()"/>
-      <button class="btn-pm" onclick="ajustarSlider('slider-manual','manual-time-disp',+1,1,60,'m')">+</button>
-    </div>
-    <div class="manual-time-val" id="manual-time-disp">10m</div>
-  </div>
-
   <!-- PROGRAMAS AUTOMÁTICOS -->
   <div>
     <div class="section-title" id="prog-title">Programas Automáticos — Ajuste Estacional TLC: 100%</div>
@@ -792,12 +789,6 @@ function actualizarBtnLluvia() {
 // ── CONFIG UI SYNC (Firebase → sliders) ─────────────────────
 // Se llama cada vez que Firebase actualiza la config
 function _aplicarConfigUI() {
-  const sliderM = document.getElementById("slider-manual");
-  const dispM   = document.getElementById("manual-time-disp");
-  if (sliderM && dispM) {
-    sliderM.value        = TLC.tiempoManualGlobalConfigurado;
-    dispM.textContent    = TLC.tiempoManualGlobalConfigurado + "m";
-  }
   renderProgramas();
 }
 
@@ -819,19 +810,21 @@ function renderZonas() {
   if (overlay) overlay.classList.toggle("visible", bloqueado);
   grid.innerHTML = "";
   for (let z = 1; z <= 8; z++) {
-    const activo = TLC.zonaActiva === z;
-    const cAsp   = activo ? "#0066CC" : "#6B8BAE";   // color aspersor
-    const cAgua  = activo ? "#00C896" : "#3A5F80";   // color agua
-    const cValv  = activo ? "#00C896" : "#2A5070";   // color cuerpo válvula
-    const cBob   = activo ? "#064A2A" : "#1A3050";   // color bobina
-    const cLine  = activo ? "#00C896" : "#3A5F80";   // color espiras
+    const activo      = TLC.zonaActiva === z;
+    const esPausada   = bloqueado && TLC.zonaAnterior === z;  // zona anterior pausada por llenado
+    const cAsp  = activo   ? "#0066CC" : esPausada ? "#F59E0B" : "#6B8BAE";
+    const cAgua = activo   ? "#00C896" : esPausada ? "#FBBF24" : "#3A5F80";
+    const cValv = activo   ? "#00C896" : esPausada ? "#92400E" : "#2A5070";
+    const cBob  = activo   ? "#064A2A" : esPausada ? "#451A03" : "#1A3050";
+    const cLine = activo   ? "#00C896" : esPausada ? "#FBBF24" : "#3A5F80";
     const btn = document.createElement("button");
     btn.className = "zone-btn" +
-      (activo    ? " active"          : "") +
-      (bloqueado ? " locked"          : "") +
-      (!activo && TLC.programaActivo !== null && !bloqueado ? " programa-activo" : "");
+      (activo     ? " active"         : "") +
+      (esPausada  ? " zona-pausada"   : "") +
+      (bloqueado && !esPausada ? " locked" : "") +
+      (!activo && !esPausada && TLC.programaActivo !== null && !bloqueado ? " programa-activo" : "");
     btn.id = "zone-btn-" + z;
-    const pctZona = activo && TLC.timerTotal > 0
+    const pctZona = (activo || esPausada) && TLC.timerTotal > 0
       ? (TLC.timerRestante / TLC.timerTotal) * 100
       : 0;
 
@@ -874,7 +867,9 @@ function renderZonas() {
 
       // ── Barra de progreso zona ──
       "<div class='z-progress-track' style='width:calc(100% - 8px)'>" +
-        "<div class='z-progress-fill' id='z-prog-" + z + "' style='width:" + (activo ? pctZona : 0) + "%'></div>" +
+        "<div class='z-progress-fill' id='z-prog-" + z + "' style='width:" + pctZona + "%;background:" +
+          (esPausada ? "linear-gradient(90deg,var(--c-amber),#FBBF24)" : "linear-gradient(90deg,var(--c-cobalt),var(--c-green))") +
+        "'></div>" +
       "</div>" +
 
       "<div class='z-num'>ZONA " + z + "</div>";
@@ -1135,15 +1130,7 @@ function renderMonitor() {
 document.addEventListener("DOMContentLoaded", () => {
   inicializarApp();
   renderFecha();
-  // Sync slider con valor persistido
-  const sliderM = document.getElementById("slider-manual");
-  const dispM   = document.getElementById("manual-time-disp");
-  if (sliderM && dispM) {
-    sliderM.value = TLC.tiempoManualGlobalConfigurado;
-    dispM.textContent = TLC.tiempoManualGlobalConfigurado + "m";
-  }
   renderMonitor();
-  // Refrescar fecha cada minuto
   setInterval(renderFecha, 60000);
 });
 </script>
