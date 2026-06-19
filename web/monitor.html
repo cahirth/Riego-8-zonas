@@ -281,12 +281,12 @@ body {
 .zone-btn .z-icon { width: 40px; height: 26px; }
 .zone-btn .z-icon svg { width: 40px; height: 26px; }
 
-/* ── ANILLO DE PROGRESO MULTICOLOR ALREDEDOR DE LA VÁLVULA ── */
+/* ── ANILLO DE PROGRESO ALREDEDOR DE LA VÁLVULA (grande, 3 colores) ── */
 .z-valve-ring {
   position: relative;
-  width: 50px;
-  height: 50px;
-  margin: 2px auto 0;
+  width: 70px;
+  height: 70px;
+  margin: 4px auto 2px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -308,13 +308,9 @@ body {
 .zone-btn.active .z-valve-ring::before {
   background: conic-gradient(
     from -90deg,
-    #FF3366 0deg,
-    #FF9933 calc(var(--z-pct, 0) * 0.6deg),
-    #FFEE33 calc(var(--z-pct, 0) * 1.2deg),
-    #33FF66 calc(var(--z-pct, 0) * 1.8deg),
-    #33CCFF calc(var(--z-pct, 0) * 2.4deg),
-    #9933FF calc(var(--z-pct, 0) * 3deg),
-    #FF3366 calc(var(--z-pct, 0) * 3.6deg),
+    #00C896 0deg,
+    #38B6FF calc(var(--z-pct, 0) * 1.8deg),
+    #0066CC calc(var(--z-pct, 0) * 3.6deg),
     rgba(255,255,255,.05) calc(var(--z-pct, 0) * 3.6deg),
     rgba(255,255,255,.05) 360deg
   );
@@ -331,12 +327,12 @@ body {
 }
 @keyframes ring-glow {
   0%,100% { filter: brightness(1) saturate(1); }
-  50%      { filter: brightness(1.25) saturate(1.3); }
+  50%      { filter: brightness(1.2) saturate(1.2); }
 }
 .z-valve-ring-inner {
   position: relative;
-  width: 42px;
-  height: 42px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   background: var(--c-surface);
   display: flex;
@@ -344,7 +340,7 @@ body {
   justify-content: center;
   z-index: 1;
 }
-.z-valve-ring-inner svg { width: 32px; height: 20px; }
+.z-valve-ring-inner svg { width: 44px; height: 28px; }
 .zone-btn .z-valve { width: 44px; height: 28px; margin-top: 2px; }
 .zone-btn .z-valve svg { width: 44px; height: 28px; }
 .zone-btn .z-num  {
@@ -355,26 +351,6 @@ body {
 }
 .zone-btn.active .z-num { color: var(--c-cobalt); }
 
-/* ── BARRA DE PROGRESO POR ZONA ── */
-.z-progress-track {
-  width: 100%;
-  height: 4px;
-  background: rgba(255,255,255,.06);
-  border-radius: 2px;
-  overflow: hidden;
-  margin-top: 2px;
-}
-.z-progress-fill {
-  height: 100%;
-  border-radius: 2px;
-  background: linear-gradient(90deg, var(--c-cobalt) 0%, var(--c-green) 100%);
-  transition: width .9s linear;
-  width: 0%;
-}
-.zone-btn:not(.active) .z-progress-fill {
-  background: rgba(255,255,255,.06);
-  width: 100%;
-}
 .zone-active-ring {
   position: absolute;
   top: 6px; right: 6px;
@@ -576,6 +552,123 @@ input[type=range]::-webkit-slider-thumb {
 .tlc-toast--error   { border-color: var(--c-red);   color: var(--c-red);   }
 .tlc-toast--warning { border-color: var(--c-amber);  color: var(--c-amber); }
 
+/* ── OVERLAY GRANDE: ZONA/PROGRAMA ACTIVO ── */
+.zone-overlay {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 200;
+  background: linear-gradient(180deg, #0F2038 0%, #0A1628 100%);
+  border-top: 1px solid var(--c-border);
+  box-shadow: 0 -8px 30px rgba(0,0,0,.5);
+  padding: 18px 20px calc(18px + env(safe-area-inset-bottom));
+  display: none;
+  align-items: center;
+  gap: 18px;
+  transform: translateY(100%);
+  transition: transform .35s cubic-bezier(.2,.9,.3,1);
+}
+.zone-overlay.visible {
+  display: flex;
+  transform: translateY(0);
+}
+.zo-ring {
+  position: relative;
+  width: 84px; height: 84px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from -90deg,
+    #00C896 0deg,
+    #38B6FF calc(var(--zo-pct, 0) * 1.8deg),
+    #0066CC calc(var(--zo-pct, 0) * 3.6deg),
+    rgba(255,255,255,.06) calc(var(--zo-pct, 0) * 3.6deg),
+    rgba(255,255,255,.06) 360deg
+  );
+  transition: background .9s linear;
+  animation: ring-glow 2s ease-in-out infinite;
+}
+.zone-overlay.pausado .zo-ring {
+  background: conic-gradient(
+    from -90deg,
+    #F59E0B 0deg,
+    #FBBF24 calc(var(--zo-pct, 0) * 3.6deg),
+    rgba(245,158,11,.12) calc(var(--zo-pct, 0) * 3.6deg),
+    rgba(245,158,11,.12) 360deg
+  );
+  animation: none;
+}
+.zo-ring-inner {
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: var(--c-surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+.zo-pct {
+  font-family: var(--c-mono);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--c-cobalt);
+}
+.zone-overlay.pausado .zo-pct { color: var(--c-amber); }
+.zo-time {
+  font-family: var(--c-mono);
+  font-size: 11px;
+  color: var(--c-muted);
+}
+.zo-info { flex: 1; min-width: 0; }
+.zo-zona {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--c-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.zo-prog {
+  font-size: 12px;
+  color: var(--c-muted);
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.zo-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.zo-btn {
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: filter .2s, transform .1s;
+}
+.zo-btn:active { transform: scale(.92); }
+.zo-btn svg { width: 18px; height: 18px; }
+.zo-btn.pause  { background: rgba(245,158,11,.18); color: var(--c-amber); }
+.zo-btn.resume { background: rgba(0,200,150,.18);  color: var(--c-green); }
+.zo-btn.stop   { background: rgba(239,68,68,.18);  color: var(--c-red); }
+.zo-btn:hover { filter: brightness(1.25); }
+
+@media (max-width: 480px) {
+  .zone-overlay { padding: 14px 14px calc(14px + env(safe-area-inset-bottom)); gap: 12px; }
+  .zo-ring { width: 68px; height: 68px; }
+  .zo-pct  { font-size: 14px; }
+  .zo-zona { font-size: 15px; }
+  .zo-btn  { width: 40px; height: 40px; }
+  .zo-btn svg { width: 16px; height: 16px; }
+  .main { padding-bottom: 110px; }
+}
+
 /* ── RESPONSIVE ── */
 @media (max-width: 600px) {
   .hw-grid       { grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -603,7 +696,7 @@ input[type=range]::-webkit-slider-thumb {
     </div>
     <div>
       <div class="hdr-title">Riego Hidráulico TLC</div>
-      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.15</span></div>
+      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.16</span></div>
     </div>
   </div>
   <a href="config.html" class="btn-cfg">
@@ -797,6 +890,21 @@ input[type=range]::-webkit-slider-thumb {
 
 </main>
 
+<!-- ── OVERLAY GRANDE: ZONA/PROGRAMA ACTIVO ── -->
+<div class="zone-overlay" id="zone-overlay">
+  <div class="zo-ring">
+    <div class="zo-ring-inner">
+      <div class="zo-pct" id="zo-pct">0%</div>
+      <div class="zo-time" id="zo-time">00:00</div>
+    </div>
+  </div>
+  <div class="zo-info">
+    <div class="zo-zona" id="zo-zona">ZONA —</div>
+    <div class="zo-prog" id="zo-prog"></div>
+  </div>
+  <div class="zo-actions" id="zo-actions"></div>
+</div>
+
 <div class="tlc-toast" id="tlc-toast"></div>
 
 <script src="app.js"></script>
@@ -855,6 +963,63 @@ function actualizarBtnLluvia() {
 // Se llama cada vez que Firebase actualiza la config
 function _aplicarConfigUI() {
   renderProgramas();
+}
+
+// ── OVERLAY GRANDE: ZONA/PROGRAMA ACTIVO ─────────────────────
+function actualizarOverlayActivo() {
+  const overlay = document.getElementById("zone-overlay");
+  if (!overlay) return;
+
+  const hayActivo = TLC.zonaActiva && (TLC.modo === "MANUAL");
+  if (!hayActivo) {
+    overlay.classList.remove("visible", "pausado");
+    return;
+  }
+
+  overlay.classList.add("visible");
+  overlay.classList.toggle("pausado", !!TLC.pausado);
+
+  const pct = TLC.timerTotal > 0 ? (TLC.timerRestante / TLC.timerTotal) * 100 : 0;
+  overlay.style.setProperty("--zo-pct", pct.toFixed(1));
+
+  const pctEl  = document.getElementById("zo-pct");
+  const timeEl = document.getElementById("zo-time");
+  const zonaEl = document.getElementById("zo-zona");
+  const progEl = document.getElementById("zo-prog");
+  const actEl  = document.getElementById("zo-actions");
+
+  if (pctEl)  pctEl.textContent  = Math.round(pct) + "%";
+  if (timeEl) timeEl.textContent = formatSegundos(TLC.timerRestante);
+  if (zonaEl) zonaEl.textContent = "ZONA " + TLC.zonaActiva + (TLC.pausado ? " · ⏸ Pausada" : " · 💧 Regando");
+
+  if (progEl) {
+    if (TLC.programaActivo !== null) {
+      const prog = TLC.programas[TLC.programaActivo];
+      progEl.textContent = prog ? "Programa: " + prog.nombre : "Programa automático";
+    } else {
+      progEl.textContent = "Riego manual";
+    }
+  }
+
+  if (actEl) {
+    if (TLC.programaActivo !== null) {
+      // Hay programa: mostrar Pausar/Reanudar + Detener
+      actEl.innerHTML = TLC.pausado
+        ? "<button class='zo-btn resume' onclick='reanudarPrograma()' title='Reanudar'>" +
+            "<svg viewBox='0 0 16 16' fill='currentColor'><path d='M4 2l10 6-10 6V2z'/></svg></button>" +
+          "<button class='zo-btn stop' onclick='detenerPrograma()' title='Detener'>" +
+            "<svg viewBox='0 0 16 16' fill='currentColor'><rect x='3' y='3' width='10' height='10' rx='1'/></svg></button>"
+        : "<button class='zo-btn pause' onclick='pausarPrograma()' title='Pausar'>" +
+            "<svg viewBox='0 0 16 16' fill='currentColor'><rect x='3' y='2' width='3' height='12' rx='1'/><rect x='10' y='2' width='3' height='12' rx='1'/></svg></button>" +
+          "<button class='zo-btn stop' onclick='detenerPrograma()' title='Detener'>" +
+            "<svg viewBox='0 0 16 16' fill='currentColor'><rect x='3' y='3' width='10' height='10' rx='1'/></svg></button>";
+    } else {
+      // Zona manual suelta: solo Detener
+      actEl.innerHTML =
+        "<button class='zo-btn stop' onclick='detenerCiclo()' title='Detener'>" +
+          "<svg viewBox='0 0 16 16' fill='currentColor'><rect x='3' y='3' width='10' height='10' rx='1'/></svg></button>";
+    }
+  }
 }
 
 // ── RENDER MONITOR ──────────────────────────────────────────
@@ -932,13 +1097,6 @@ function renderZonas() {
               : "<circle cx='38' cy='19' r='2.5' fill='#EF4444' opacity='0.7'/>") +
           "</svg>" +
         "</div>" +
-      "</div>" +
-
-      // ── Barra de progreso zona ──
-      "<div class='z-progress-track' style='width:calc(100% - 8px)'>" +
-        "<div class='z-progress-fill' id='z-prog-" + z + "' style='width:" + pctZona + "%;background:" +
-          (esPausada ? "linear-gradient(90deg,var(--c-amber),#FBBF24)" : "linear-gradient(90deg,var(--c-cobalt),var(--c-green))") +
-        "'></div>" +
       "</div>" +
 
       "<div class='z-num'>ZONA " + z + "</div>";
@@ -1167,24 +1325,19 @@ function actualizarTimerUI() {
       ? "linear-gradient(90deg, var(--c-amber) 0%, #F59E0B 100%)"
       : "linear-gradient(90deg, var(--c-cobalt) 0%, var(--c-green) 100%)";
   }
-  // Actualizar barra de progreso de la zona activa sin re-renderizar
+  // Actualizar anillo de progreso de la zona activa sin re-renderizar
   if (TLC.zonaActiva) {
-    const zFill = document.getElementById("z-prog-" + TLC.zonaActiva);
-    const zBtn  = document.getElementById("zone-btn-" + TLC.zonaActiva);
-    const pct = TLC.timerTotal > 0 ? (TLC.timerRestante / TLC.timerTotal) * 100 : 0;
-    if (zFill) {
-      zFill.style.width = pct + "%";
-      zFill.style.background = TLC.pausado
-        ? "linear-gradient(90deg, var(--c-amber), #FBBF24)"
-        : "linear-gradient(90deg, var(--c-cobalt), var(--c-green))";
-    }
+    const zBtn = document.getElementById("zone-btn-" + TLC.zonaActiva);
+    const pct  = TLC.timerTotal > 0 ? (TLC.timerRestante / TLC.timerTotal) * 100 : 0;
     if (zBtn) zBtn.style.setProperty("--z-pct", pct.toFixed(1));
   }
-  // Actualizar solo el countdown inline en la tarjeta
+  // Actualizar solo el countdown inline en la tarjeta de programa
   if (TLC.programaActivo !== null) {
     const spans = document.querySelectorAll(".prog-countdown");
     spans.forEach(s => { s.textContent = formatSegundos(TLC.timerRestante); });
   }
+  // Actualizar overlay grande "now playing"
+  actualizarOverlayActivo();
 }
 
 function renderMonitor() {
@@ -1193,6 +1346,7 @@ function renderMonitor() {
   actualizarTimerUI();
   actualizarTanqueTimerUI();
   actualizarBtnLluvia();
+  actualizarOverlayActivo();
   renderZonas();
   renderProgramas();
 }
