@@ -552,28 +552,17 @@ input[type=range]::-webkit-slider-thumb {
 .tlc-toast--error   { border-color: var(--c-red);   color: var(--c-red);   }
 .tlc-toast--warning { border-color: var(--c-amber);  color: var(--c-amber); }
 
-/* ── OVERLAY GRANDE: ZONA/PROGRAMA ACTIVO ── */
-.zone-overlay {
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  z-index: 200;
-  background: linear-gradient(180deg, #0F2038 0%, #0A1628 100%);
-  border-top: 1px solid var(--c-border);
-  box-shadow: 0 -8px 30px rgba(0,0,0,.5);
-  padding: 18px 20px calc(18px + env(safe-area-inset-bottom));
+/* ── RIEGO ACTIVO: ANILLO + INFO DENTRO DEL BANNER ── */
+.timer-ring-row {
   display: none;
   align-items: center;
-  gap: 18px;
-  transform: translateY(100%);
-  transition: transform .35s cubic-bezier(.2,.9,.3,1);
+  gap: 14px;
+  padding-top: 4px;
 }
-.zone-overlay.visible {
-  display: flex;
-  transform: translateY(0);
-}
+.timer-ring-row.visible { display: flex; }
 .zo-ring {
   position: relative;
-  width: 84px; height: 84px;
+  width: 64px; height: 64px;
   flex-shrink: 0;
   border-radius: 50%;
   background: conic-gradient(
@@ -587,7 +576,7 @@ input[type=range]::-webkit-slider-thumb {
   transition: background .9s linear;
   animation: ring-glow 2s ease-in-out infinite;
 }
-.zone-overlay.pausado .zo-ring {
+.timer-ring-row.pausado .zo-ring {
   background: conic-gradient(
     from -90deg,
     #F59E0B 0deg,
@@ -599,30 +588,33 @@ input[type=range]::-webkit-slider-thumb {
 }
 .zo-ring-inner {
   position: absolute;
-  inset: 5px;
+  inset: 4px;
   border-radius: 50%;
   background: var(--c-surface);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
+  gap: 0;
 }
 .zo-pct {
   font-family: var(--c-mono);
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--c-cobalt);
+  line-height: 1.1;
 }
-.zone-overlay.pausado .zo-pct { color: var(--c-amber); }
+.timer-ring-row.pausado .zo-pct { color: var(--c-amber); }
 .zo-time {
   font-family: var(--c-mono);
-  font-size: 11px;
-  color: var(--c-muted);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--c-text);
+  line-height: 1.1;
 }
 .zo-info { flex: 1; min-width: 0; }
 .zo-zona {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--c-text);
   white-space: nowrap;
@@ -632,18 +624,18 @@ input[type=range]::-webkit-slider-thumb {
 .zo-prog {
   font-size: 12px;
   color: var(--c-muted);
-  margin-top: 3px;
+  margin-top: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .zo-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
 }
 .zo-btn {
-  width: 46px; height: 46px;
+  width: 38px; height: 38px;
   border-radius: 50%;
   border: none;
   cursor: pointer;
@@ -653,20 +645,19 @@ input[type=range]::-webkit-slider-thumb {
   transition: filter .2s, transform .1s;
 }
 .zo-btn:active { transform: scale(.92); }
-.zo-btn svg { width: 18px; height: 18px; }
+.zo-btn svg { width: 15px; height: 15px; }
 .zo-btn.pause  { background: rgba(245,158,11,.18); color: var(--c-amber); }
 .zo-btn.resume { background: rgba(0,200,150,.18);  color: var(--c-green); }
 .zo-btn.stop   { background: rgba(239,68,68,.18);  color: var(--c-red); }
 .zo-btn:hover { filter: brightness(1.25); }
 
 @media (max-width: 480px) {
-  .zone-overlay { padding: 14px 14px calc(14px + env(safe-area-inset-bottom)); gap: 12px; }
-  .zo-ring { width: 68px; height: 68px; }
-  .zo-pct  { font-size: 14px; }
-  .zo-zona { font-size: 15px; }
-  .zo-btn  { width: 40px; height: 40px; }
-  .zo-btn svg { width: 16px; height: 16px; }
-  .main { padding-bottom: 110px; }
+  .zo-ring  { width: 54px; height: 54px; }
+  .zo-pct   { font-size: 11px; }
+  .zo-time  { font-size: 14px; }
+  .zo-zona  { font-size: 13px; }
+  .zo-btn   { width: 34px; height: 34px; }
+  .zo-btn svg { width: 13px; height: 13px; }
 }
 
 /* ── RESPONSIVE ── */
@@ -696,7 +687,7 @@ input[type=range]::-webkit-slider-thumb {
     </div>
     <div>
       <div class="hdr-title">Riego Hidráulico TLC</div>
-      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.16</span></div>
+      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.17</span></div>
     </div>
   </div>
   <a href="config.html" class="btn-cfg">
@@ -719,15 +710,19 @@ input[type=range]::-webkit-slider-thumb {
         <span id="status-text">STANDBY</span>
       </div>
     </div>
-    <!-- Timer riego normal -->
-    <div class="timer-block" id="timer-block">
-      <div class="timer-row">
-        <span class="timer-val" id="timer-val">00:00</span>
-        <span class="timer-label" id="timer-label">restante</span>
+    <!-- Riego activo: anillo + info en lugar de barra horizontal -->
+    <div class="timer-ring-row" id="timer-block">
+      <div class="zo-ring" id="status-ring">
+        <div class="zo-ring-inner">
+          <div class="zo-pct" id="zo-pct">0%</div>
+          <div class="zo-time" id="timer-val">00:00</div>
+        </div>
       </div>
-      <div class="progress-track">
-        <div class="progress-fill" id="progress-fill" style="width:100%"></div>
+      <div class="zo-info">
+        <div class="zo-zona" id="zo-zona">ZONA —</div>
+        <div class="zo-prog" id="zo-prog"></div>
       </div>
+      <div class="zo-actions" id="zo-actions"></div>
     </div>
     <!-- Timer llenado tanque con timeout -->
     <div class="timer-block" id="tanque-timer-block">
@@ -890,21 +885,6 @@ input[type=range]::-webkit-slider-thumb {
 
 </main>
 
-<!-- ── OVERLAY GRANDE: ZONA/PROGRAMA ACTIVO ── -->
-<div class="zone-overlay" id="zone-overlay">
-  <div class="zo-ring">
-    <div class="zo-ring-inner">
-      <div class="zo-pct" id="zo-pct">0%</div>
-      <div class="zo-time" id="zo-time">00:00</div>
-    </div>
-  </div>
-  <div class="zo-info">
-    <div class="zo-zona" id="zo-zona">ZONA —</div>
-    <div class="zo-prog" id="zo-prog"></div>
-  </div>
-  <div class="zo-actions" id="zo-actions"></div>
-</div>
-
 <div class="tlc-toast" id="tlc-toast"></div>
 
 <script src="app.js"></script>
@@ -965,25 +945,25 @@ function _aplicarConfigUI() {
   renderProgramas();
 }
 
-// ── OVERLAY GRANDE: ZONA/PROGRAMA ACTIVO ─────────────────────
+// ── RIEGO ACTIVO: ANILLO + INFO DENTRO DEL BANNER ────────────
 function actualizarOverlayActivo() {
-  const overlay = document.getElementById("zone-overlay");
-  if (!overlay) return;
+  const row = document.getElementById("timer-block");
+  if (!row) return;
 
   const hayActivo = TLC.zonaActiva && (TLC.modo === "MANUAL");
   if (!hayActivo) {
-    overlay.classList.remove("visible", "pausado");
+    row.classList.remove("visible", "pausado");
     return;
   }
 
-  overlay.classList.add("visible");
-  overlay.classList.toggle("pausado", !!TLC.pausado);
+  row.classList.add("visible");
+  row.classList.toggle("pausado", !!TLC.pausado);
 
   const pct = TLC.timerTotal > 0 ? (TLC.timerRestante / TLC.timerTotal) * 100 : 0;
-  overlay.style.setProperty("--zo-pct", pct.toFixed(1));
+  row.style.setProperty("--zo-pct", pct.toFixed(1));
 
   const pctEl  = document.getElementById("zo-pct");
-  const timeEl = document.getElementById("zo-time");
+  const timeEl = document.getElementById("timer-val");
   const zonaEl = document.getElementById("zo-zona");
   const progEl = document.getElementById("zo-prog");
   const actEl  = document.getElementById("zo-actions");
@@ -1003,7 +983,6 @@ function actualizarOverlayActivo() {
 
   if (actEl) {
     if (TLC.programaActivo !== null) {
-      // Hay programa: mostrar Pausar/Reanudar + Detener
       actEl.innerHTML = TLC.pausado
         ? "<button class='zo-btn resume' onclick='reanudarPrograma()' title='Reanudar'>" +
             "<svg viewBox='0 0 16 16' fill='currentColor'><path d='M4 2l10 6-10 6V2z'/></svg></button>" +
@@ -1014,7 +993,6 @@ function actualizarOverlayActivo() {
           "<button class='zo-btn stop' onclick='detenerPrograma()' title='Detener'>" +
             "<svg viewBox='0 0 16 16' fill='currentColor'><rect x='3' y='3' width='10' height='10' rx='1'/></svg></button>";
     } else {
-      // Zona manual suelta: solo Detener
       actEl.innerHTML =
         "<button class='zo-btn stop' onclick='detenerCiclo()' title='Detener'>" +
           "<svg viewBox='0 0 16 16' fill='currentColor'><rect x='3' y='3' width='10' height='10' rx='1'/></svg></button>";
@@ -1306,26 +1284,7 @@ function actualizarStatusBanner() {
 }
 
 function actualizarTimerUI() {
-  const block   = document.getElementById("timer-block");
-  const valEl   = document.getElementById("timer-val");
-  const fillEl  = document.getElementById("progress-fill");
-  const labelEl = document.getElementById("timer-label");
-  if (!block) return;
-  const activo = TLC.modo === "MANUAL" && TLC.timerRestante > 0 && !TLC.pausado;
-  block.classList.toggle("visible", activo || TLC.pausado);
-  if (activo || TLC.pausado) {
-    valEl.textContent  = formatSegundos(TLC.timerRestante);
-    const sufijo = TLC.programaActivo !== null
-      ? (TLC.pausado ? "⏸ Pausado · Zona " : "▶ Programa · Zona ") + TLC.zonaActiva
-      : "restante · Zona " + TLC.zonaActiva;
-    labelEl.textContent = sufijo;
-    const pct = TLC.timerTotal > 0 ? (TLC.timerRestante / TLC.timerTotal) * 100 : 0;
-    fillEl.style.width  = pct + "%";
-    fillEl.style.background = TLC.pausado
-      ? "linear-gradient(90deg, var(--c-amber) 0%, #F59E0B 100%)"
-      : "linear-gradient(90deg, var(--c-cobalt) 0%, var(--c-green) 100%)";
-  }
-  // Actualizar anillo de progreso de la zona activa sin re-renderizar
+  // Actualizar anillo de progreso de la zona en la grilla sin re-renderizar
   if (TLC.zonaActiva) {
     const zBtn = document.getElementById("zone-btn-" + TLC.zonaActiva);
     const pct  = TLC.timerTotal > 0 ? (TLC.timerRestante / TLC.timerTotal) * 100 : 0;
@@ -1336,7 +1295,7 @@ function actualizarTimerUI() {
     const spans = document.querySelectorAll(".prog-countdown");
     spans.forEach(s => { s.textContent = formatSegundos(TLC.timerRestante); });
   }
-  // Actualizar overlay grande "now playing"
+  // Anillo + info dentro del banner de estado
   actualizarOverlayActivo();
 }
 
