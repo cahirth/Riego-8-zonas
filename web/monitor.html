@@ -280,6 +280,71 @@ body {
 }
 .zone-btn .z-icon { width: 40px; height: 26px; }
 .zone-btn .z-icon svg { width: 40px; height: 26px; }
+
+/* ── ANILLO DE PROGRESO MULTICOLOR ALREDEDOR DE LA VÁLVULA ── */
+.z-valve-ring {
+  position: relative;
+  width: 50px;
+  height: 50px;
+  margin: 2px auto 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+.z-valve-ring::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(255,255,255,.04) 0deg,
+    rgba(255,255,255,.04) 360deg
+  );
+  transition: background .9s linear;
+  z-index: 0;
+}
+.zone-btn.active .z-valve-ring::before {
+  background: conic-gradient(
+    from -90deg,
+    #FF3366 0deg,
+    #FF9933 calc(var(--z-pct, 0) * 0.6deg),
+    #FFEE33 calc(var(--z-pct, 0) * 1.2deg),
+    #33FF66 calc(var(--z-pct, 0) * 1.8deg),
+    #33CCFF calc(var(--z-pct, 0) * 2.4deg),
+    #9933FF calc(var(--z-pct, 0) * 3deg),
+    #FF3366 calc(var(--z-pct, 0) * 3.6deg),
+    rgba(255,255,255,.05) calc(var(--z-pct, 0) * 3.6deg),
+    rgba(255,255,255,.05) 360deg
+  );
+  animation: ring-glow 2s ease-in-out infinite;
+}
+.zone-btn.zona-pausada .z-valve-ring::before {
+  background: conic-gradient(
+    from -90deg,
+    #F59E0B 0deg,
+    #FBBF24 calc(var(--z-pct, 0) * 3.6deg),
+    rgba(245,158,11,.1) calc(var(--z-pct, 0) * 3.6deg),
+    rgba(245,158,11,.1) 360deg
+  );
+}
+@keyframes ring-glow {
+  0%,100% { filter: brightness(1) saturate(1); }
+  50%      { filter: brightness(1.25) saturate(1.3); }
+}
+.z-valve-ring-inner {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--c-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+.z-valve-ring-inner svg { width: 32px; height: 20px; }
 .zone-btn .z-valve { width: 44px; height: 28px; margin-top: 2px; }
 .zone-btn .z-valve svg { width: 44px; height: 28px; }
 .zone-btn .z-num  {
@@ -538,7 +603,7 @@ input[type=range]::-webkit-slider-thumb {
     </div>
     <div>
       <div class="hdr-title">Riego Hidráulico TLC</div>
-      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.14</span></div>
+      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.15</span></div>
     </div>
   </div>
   <a href="config.html" class="btn-cfg">
@@ -828,6 +893,8 @@ function renderZonas() {
       ? (TLC.timerRestante / TLC.timerTotal) * 100
       : 0;
 
+    btn.style.setProperty("--z-pct", pctZona.toFixed(1));
+
     btn.innerHTML =
       "<div class='zone-active-ring'></div>" +
 
@@ -845,24 +912,26 @@ function renderZonas() {
         "</svg>" +
       "</div>" +
 
-      // ── Electroválvula solenoide ──
-      "<div class='z-valve'>" +
-        "<svg viewBox='0 0 44 28' fill='none' xmlns='http://www.w3.org/2000/svg'>" +
-          "<rect x='7' y='14' width='30' height='10' rx='2' fill='#0D1B2A' stroke='" + cValv + "' stroke-width='1.3'/>" +
-          "<rect x='1'  y='16' width='7'  height='6' rx='1' fill='#0D1B2A' stroke='" + cValv + "' stroke-width='1'/>" +
-          "<rect x='36' y='16' width='7'  height='6' rx='1' fill='#0D1B2A' stroke='" + cValv + "' stroke-width='1'/>" +
-          "<rect x='15' y='4' width='14' height='11' rx='1.5' fill='" + cBob + "' stroke='" + cValv + "' stroke-width='1.3'/>" +
-          "<line x1='16.5' y1='7'  x2='27.5' y2='7'  stroke='" + cLine + "' stroke-width='0.9'/>" +
-          "<line x1='16.5' y1='9.5' x2='27.5' y2='9.5' stroke='" + cLine + "' stroke-width='0.9'/>" +
-          "<line x1='16.5' y1='12' x2='27.5' y2='12' stroke='" + cLine + "' stroke-width='0.9'/>" +
-          "<rect x='20' y='14' width='4' height='3' fill='" + cValv + "'/>" +
-          "<rect x='18' y='1' width='8' height='5' rx='1' fill='#0D2A3A' stroke='" + cValv + "' stroke-width='1'/>" +
-          "<circle cx='20.5' cy='3.5' r='0.9' fill='" + cLine + "'/>" +
-          "<circle cx='23.5' cy='3.5' r='0.9' fill='" + cLine + "'/>" +
-          (activo
-            ? "<circle cx='38' cy='19' r='2.5' fill='#00C896'/>"
-            : "<circle cx='38' cy='19' r='2.5' fill='#EF4444' opacity='0.7'/>") +
-        "</svg>" +
+      // ── Electroválvula solenoide con anillo de progreso multicolor ──
+      "<div class='z-valve-ring'>" +
+        "<div class='z-valve-ring-inner'>" +
+          "<svg viewBox='0 0 44 28' fill='none' xmlns='http://www.w3.org/2000/svg'>" +
+            "<rect x='7' y='14' width='30' height='10' rx='2' fill='#0D1B2A' stroke='" + cValv + "' stroke-width='1.3'/>" +
+            "<rect x='1'  y='16' width='7'  height='6' rx='1' fill='#0D1B2A' stroke='" + cValv + "' stroke-width='1'/>" +
+            "<rect x='36' y='16' width='7'  height='6' rx='1' fill='#0D1B2A' stroke='" + cValv + "' stroke-width='1'/>" +
+            "<rect x='15' y='4' width='14' height='11' rx='1.5' fill='" + cBob + "' stroke='" + cValv + "' stroke-width='1.3'/>" +
+            "<line x1='16.5' y1='7'  x2='27.5' y2='7'  stroke='" + cLine + "' stroke-width='0.9'/>" +
+            "<line x1='16.5' y1='9.5' x2='27.5' y2='9.5' stroke='" + cLine + "' stroke-width='0.9'/>" +
+            "<line x1='16.5' y1='12' x2='27.5' y2='12' stroke='" + cLine + "' stroke-width='0.9'/>" +
+            "<rect x='20' y='14' width='4' height='3' fill='" + cValv + "'/>" +
+            "<rect x='18' y='1' width='8' height='5' rx='1' fill='#0D2A3A' stroke='" + cValv + "' stroke-width='1'/>" +
+            "<circle cx='20.5' cy='3.5' r='0.9' fill='" + cLine + "'/>" +
+            "<circle cx='23.5' cy='3.5' r='0.9' fill='" + cLine + "'/>" +
+            (activo
+              ? "<circle cx='38' cy='19' r='2.5' fill='#00C896'/>"
+              : "<circle cx='38' cy='19' r='2.5' fill='#EF4444' opacity='0.7'/>") +
+          "</svg>" +
+        "</div>" +
       "</div>" +
 
       // ── Barra de progreso zona ──
@@ -1101,13 +1170,15 @@ function actualizarTimerUI() {
   // Actualizar barra de progreso de la zona activa sin re-renderizar
   if (TLC.zonaActiva) {
     const zFill = document.getElementById("z-prog-" + TLC.zonaActiva);
+    const zBtn  = document.getElementById("zone-btn-" + TLC.zonaActiva);
+    const pct = TLC.timerTotal > 0 ? (TLC.timerRestante / TLC.timerTotal) * 100 : 0;
     if (zFill) {
-      const pct = TLC.timerTotal > 0 ? (TLC.timerRestante / TLC.timerTotal) * 100 : 0;
       zFill.style.width = pct + "%";
       zFill.style.background = TLC.pausado
         ? "linear-gradient(90deg, var(--c-amber), #FBBF24)"
         : "linear-gradient(90deg, var(--c-cobalt), var(--c-green))";
     }
+    if (zBtn) zBtn.style.setProperty("--z-pct", pct.toFixed(1));
   }
   // Actualizar solo el countdown inline en la tarjeta
   if (TLC.programaActivo !== null) {
