@@ -22,7 +22,7 @@
 "use strict";
 
 // ─── VERSIÓN ─────────────────────────────────────────────────
-const APP_VERSION = { app: "v2.14", monitor: "v2.14", config: "v2.14" };
+const APP_VERSION = { app: "v2.14b", monitor: "v2.14", config: "v2.14" };
 
 (function _bannerConsola() {
   console.log("%c TLC Riego Hidráulico ", "background:#0066CC;color:#fff;font-weight:700;font-size:13px;border-radius:4px;padding:3px 10px");
@@ -143,6 +143,7 @@ function _escucharFirebase() {
     if (typeof actualizarHWBadges     === "function") actualizarHWBadges();
     if (typeof actualizarTimerUI      === "function") actualizarTimerUI();
     if (typeof actualizarStatusBanner === "function") actualizarStatusBanner();
+    if (typeof actualizarBtnLluvia    === "function") actualizarBtnLluvia();
     if (typeof renderZonas            === "function") renderZonas();
     if (typeof renderProgramas        === "function") renderProgramas();
 
