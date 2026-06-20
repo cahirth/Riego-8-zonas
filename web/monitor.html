@@ -552,116 +552,205 @@ input[type=range]::-webkit-slider-thumb {
 .tlc-toast--error   { border-color: var(--c-red);   color: var(--c-red);   }
 .tlc-toast--warning { border-color: var(--c-amber);  color: var(--c-amber); }
 
-/* ── RIEGO ACTIVO: ANILLO + INFO DENTRO DEL BANNER ── */
+/* ── MINI INDICADOR EN BANNER (link al overlay grande) ── */
 .timer-ring-row {
   display: none;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   padding-top: 4px;
+  cursor: pointer;
 }
 .timer-ring-row.visible { display: flex; }
-.zo-ring {
-  position: relative;
-  width: 64px; height: 64px;
+.zo-mini-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--c-cobalt);
   flex-shrink: 0;
+  animation: zo-mini-pulse 1.4s ease-in-out infinite;
+}
+.timer-ring-row.pausado .zo-mini-dot { background: var(--c-amber); animation: none; }
+@keyframes zo-mini-pulse {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .5; transform: scale(.7); }
+}
+.zo-mini-text {
+  font-size: 13px;
+  color: var(--c-muted);
+  flex: 1;
+}
+.zo-mini-text strong { color: var(--c-text); font-weight: 700; }
+.zo-mini-time {
+  font-family: var(--c-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--c-cobalt);
+}
+.timer-ring-row.pausado .zo-mini-time { color: var(--c-amber); }
+.zo-mini-expand {
+  font-size: 11px;
+  color: var(--c-muted);
+  margin-left: 4px;
+}
+
+/* ── OVERLAY GRANDE DE ACTIVIDAD (modal full-screen) ── */
+.activity-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  align-items: center;
+  justify-content: center;
+}
+.activity-overlay.visible { display: flex; }
+.activity-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(5,10,20,.82);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: ao-fade-in .25s ease;
+}
+@keyframes ao-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.activity-modal {
+  position: relative;
+  width: 75vw;
+  height: 75vh;
+  max-width: 560px;
+  max-height: 720px;
+  background: linear-gradient(165deg, #132236 0%, #0A1628 100%);
+  border: 1px solid var(--c-border);
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.03) inset;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  padding: 30px;
+  animation: ao-pop-in .3s cubic-bezier(.2,.9,.3,1);
+}
+@keyframes ao-pop-in {
+  from { opacity: 0; transform: scale(.92) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.activity-close {
+  position: absolute;
+  top: 16px; right: 16px;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--c-border);
+  background: rgba(255,255,255,.04);
+  color: var(--c-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .2s, color .2s;
+}
+.activity-close:hover { background: rgba(255,255,255,.1); color: var(--c-text); }
+
+/* ── ANILLO GIGANTE 3 COLORES ── */
+.ao-ring-wrap { flex-shrink: 0; }
+.ao-ring {
+  position: relative;
+  width: min(42vw, 280px);
+  height: min(42vw, 280px);
   border-radius: 50%;
   background: conic-gradient(
     from -90deg,
     #00C896 0deg,
-    #38B6FF calc(var(--zo-pct, 0) * 1.8deg),
-    #0066CC calc(var(--zo-pct, 0) * 3.6deg),
-    rgba(255,255,255,.06) calc(var(--zo-pct, 0) * 3.6deg),
-    rgba(255,255,255,.06) 360deg
+    #38B6FF calc(var(--ao-pct, 0) * 1.8deg),
+    #0066CC calc(var(--ao-pct, 0) * 3.6deg),
+    rgba(255,255,255,.05) calc(var(--ao-pct, 0) * 3.6deg),
+    rgba(255,255,255,.05) 360deg
   );
   transition: background .9s linear;
   animation: ring-glow 2s ease-in-out infinite;
+  box-shadow: 0 0 50px rgba(0,102,204,.18);
 }
-.timer-ring-row.pausado .zo-ring {
+.activity-overlay.pausado .ao-ring {
   background: conic-gradient(
     from -90deg,
     #F59E0B 0deg,
-    #FBBF24 calc(var(--zo-pct, 0) * 3.6deg),
-    rgba(245,158,11,.12) calc(var(--zo-pct, 0) * 3.6deg),
-    rgba(245,158,11,.12) 360deg
+    #FBBF24 calc(var(--ao-pct, 0) * 3.6deg),
+    rgba(245,158,11,.1) calc(var(--ao-pct, 0) * 3.6deg),
+    rgba(245,158,11,.1) 360deg
   );
   animation: none;
+  box-shadow: 0 0 50px rgba(245,158,11,.15);
 }
-.zo-ring-inner {
+.ao-ring-inner {
   position: absolute;
-  inset: 4px;
+  inset: 14px;
   border-radius: 50%;
   background: var(--c-surface);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0;
+  gap: 4px;
+  box-shadow: inset 0 2px 12px rgba(0,0,0,.4);
 }
-.zo-pct {
+.ao-pct {
   font-family: var(--c-mono);
-  font-size: 14px;
+  font-size: clamp(20px, 4.5vw, 30px);
   font-weight: 700;
   color: var(--c-cobalt);
-  line-height: 1.1;
 }
-.timer-ring-row.pausado .zo-pct { color: var(--c-amber); }
-.zo-time {
+.activity-overlay.pausado .ao-pct { color: var(--c-amber); }
+.ao-time {
   font-family: var(--c-mono);
-  font-size: 17px;
+  font-size: clamp(32px, 8vw, 52px);
   font-weight: 700;
   color: var(--c-text);
-  line-height: 1.1;
+  letter-spacing: 1px;
 }
-.zo-info { flex: 1; min-width: 0; }
-.zo-zona {
-  font-size: 15px;
+.ao-zona {
+  font-size: clamp(20px, 4vw, 26px);
   font-weight: 700;
   color: var(--c-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  text-align: center;
 }
-.zo-prog {
-  font-size: 12px;
+.ao-prog {
+  font-size: 14px;
   color: var(--c-muted);
-  margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  text-align: center;
+  margin-top: -14px;
 }
-.zo-actions {
+.ao-actions {
   display: flex;
-  gap: 6px;
-  flex-shrink: 0;
+  gap: 16px;
+  margin-top: 6px;
 }
-.zo-btn {
-  width: 38px; height: 38px;
-  border-radius: 50%;
+.ao-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: none;
   border: none;
   cursor: pointer;
+  color: var(--c-text);
+}
+.ao-btn-circle {
+  width: 60px; height: 60px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: filter .2s, transform .1s;
 }
-.zo-btn:active { transform: scale(.92); }
-.zo-btn svg { width: 15px; height: 15px; }
-.zo-btn.pause  { background: rgba(245,158,11,.18); color: var(--c-amber); }
-.zo-btn.resume { background: rgba(0,200,150,.18);  color: var(--c-green); }
-.zo-btn.stop   { background: rgba(239,68,68,.18);  color: var(--c-red); }
-.zo-btn:hover { filter: brightness(1.25); }
+.ao-btn:active .ao-btn-circle { transform: scale(.92); }
+.ao-btn-circle svg { width: 24px; height: 24px; }
+.ao-btn-label { font-size: 11px; font-weight: 600; color: var(--c-muted); }
+.ao-btn.pause  .ao-btn-circle { background: rgba(245,158,11,.18); color: var(--c-amber); }
+.ao-btn.resume .ao-btn-circle { background: rgba(0,200,150,.18);  color: var(--c-green); }
+.ao-btn.stop   .ao-btn-circle { background: rgba(239,68,68,.18);  color: var(--c-red); }
+.ao-btn:hover .ao-btn-circle { filter: brightness(1.25); }
 
-@media (max-width: 480px) {
-  .zo-ring  { width: 54px; height: 54px; }
-  .zo-pct   { font-size: 11px; }
-  .zo-time  { font-size: 14px; }
-  .zo-zona  { font-size: 13px; }
-  .zo-btn   { width: 34px; height: 34px; }
-  .zo-btn svg { width: 13px; height: 13px; }
-}
-
-/* ── RESPONSIVE ── */
-@media (max-width: 600px) {
+@media (max-width: 700px) {
+  .activity-modal { width: 90vw; height: auto; min-height: 60vh; padding: 26px 20px; gap: 18px; }
+  .ao-ring { width: 56vw; height: 56vw; max-width: 240px; max-height: 240px; }
   .hw-grid       { grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .zones-grid    { grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .hw-badge      { padding: 12px 8px; gap: 7px; }
@@ -687,7 +776,7 @@ input[type=range]::-webkit-slider-thumb {
     </div>
     <div>
       <div class="hdr-title">Riego Hidráulico TLC</div>
-      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.17</span></div>
+      <div class="hdr-sub">Panel de Monitoreo &nbsp;·&nbsp; <span style="font-family:'JetBrains Mono',monospace;color:#38B6FF;">v2.18</span></div>
     </div>
   </div>
   <a href="config.html" class="btn-cfg">
@@ -710,19 +799,12 @@ input[type=range]::-webkit-slider-thumb {
         <span id="status-text">STANDBY</span>
       </div>
     </div>
-    <!-- Riego activo: anillo + info en lugar de barra horizontal -->
-    <div class="timer-ring-row" id="timer-block">
-      <div class="zo-ring" id="status-ring">
-        <div class="zo-ring-inner">
-          <div class="zo-pct" id="zo-pct">0%</div>
-          <div class="zo-time" id="timer-val">00:00</div>
-        </div>
-      </div>
-      <div class="zo-info">
-        <div class="zo-zona" id="zo-zona">ZONA —</div>
-        <div class="zo-prog" id="zo-prog"></div>
-      </div>
-      <div class="zo-actions" id="zo-actions"></div>
+    <!-- Mini indicador: click abre el overlay grande -->
+    <div class="timer-ring-row" id="timer-block" onclick="abrirOverlayActividad()">
+      <div class="zo-mini-dot"></div>
+      <div class="zo-mini-text">Riego activo — <strong id="zo-mini-zona">Zona —</strong></div>
+      <div class="zo-mini-time" id="zo-mini-time">00:00</div>
+      <div class="zo-mini-expand">⤢</div>
     </div>
     <!-- Timer llenado tanque con timeout -->
     <div class="timer-block" id="tanque-timer-block">
@@ -885,6 +967,30 @@ input[type=range]::-webkit-slider-thumb {
 
 </main>
 
+<!-- ── OVERLAY GRANDE DE ACTIVIDAD (modal full-screen) ── -->
+<div class="activity-overlay" id="activity-overlay">
+  <div class="activity-backdrop" onclick="cerrarOverlayActividad()"></div>
+  <div class="activity-modal">
+    <button class="activity-close" onclick="cerrarOverlayActividad()">
+      <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="15" y2="15"/><line x1="15" y1="5" x2="5" y2="15"/></svg>
+    </button>
+
+    <div class="ao-ring-wrap">
+      <div class="ao-ring" id="ao-ring">
+        <div class="ao-ring-inner">
+          <div class="ao-pct" id="ao-pct">0%</div>
+          <div class="ao-time" id="ao-time">00:00</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ao-zona" id="ao-zona">ZONA —</div>
+    <div class="ao-prog" id="ao-prog">Riego manual</div>
+
+    <div class="ao-actions" id="ao-actions"></div>
+  </div>
+</div>
+
 <div class="tlc-toast" id="tlc-toast"></div>
 
 <script src="app.js"></script>
@@ -946,56 +1052,94 @@ function _aplicarConfigUI() {
 }
 
 // ── RIEGO ACTIVO: ANILLO + INFO DENTRO DEL BANNER ────────────
+// Flag: el usuario cerró manualmente el modal grande — no reabrir solo hasta el próximo evento
+let _overlayCerradoManual = false;
+
+function abrirOverlayActividad() {
+  _overlayCerradoManual = false;
+  const ov = document.getElementById("activity-overlay");
+  if (ov) ov.classList.add("visible");
+  actualizarOverlayActivo();
+}
+
+function cerrarOverlayActividad() {
+  _overlayCerradoManual = true;
+  const ov = document.getElementById("activity-overlay");
+  if (ov) ov.classList.remove("visible");
+}
+
 function actualizarOverlayActivo() {
   const row = document.getElementById("timer-block");
+  const ov  = document.getElementById("activity-overlay");
   if (!row) return;
 
   const hayActivo = TLC.zonaActiva && (TLC.modo === "MANUAL");
+
+  // ── Mini indicador en banner ──
   if (!hayActivo) {
     row.classList.remove("visible", "pausado");
+    if (ov) ov.classList.remove("visible");
+    _overlayCerradoManual = false;   // reset para la próxima actividad
     return;
   }
-
   row.classList.add("visible");
   row.classList.toggle("pausado", !!TLC.pausado);
 
   const pct = TLC.timerTotal > 0 ? (TLC.timerRestante / TLC.timerTotal) * 100 : 0;
-  row.style.setProperty("--zo-pct", pct.toFixed(1));
 
-  const pctEl  = document.getElementById("zo-pct");
-  const timeEl = document.getElementById("timer-val");
-  const zonaEl = document.getElementById("zo-zona");
-  const progEl = document.getElementById("zo-prog");
-  const actEl  = document.getElementById("zo-actions");
+  const miniZona = document.getElementById("zo-mini-zona");
+  const miniTime = document.getElementById("zo-mini-time");
+  if (miniZona) miniZona.textContent = "Zona " + TLC.zonaActiva + (TLC.pausado ? " (pausada)" : "");
+  if (miniTime) miniTime.textContent = formatSegundos(TLC.timerRestante);
 
-  if (pctEl)  pctEl.textContent  = Math.round(pct) + "%";
-  if (timeEl) timeEl.textContent = formatSegundos(TLC.timerRestante);
-  if (zonaEl) zonaEl.textContent = "ZONA " + TLC.zonaActiva + (TLC.pausado ? " · ⏸ Pausada" : " · 💧 Regando");
-
-  if (progEl) {
-    if (TLC.programaActivo !== null) {
-      const prog = TLC.programas[TLC.programaActivo];
-      progEl.textContent = prog ? "Programa: " + prog.nombre : "Programa automático";
-    } else {
-      progEl.textContent = "Riego manual";
-    }
+  // ── Modal grande: auto-abrir al iniciar actividad, salvo que el usuario lo haya cerrado ──
+  if (ov && !_overlayCerradoManual) {
+    ov.classList.add("visible");
   }
+  if (ov) {
+    ov.classList.toggle("pausado", !!TLC.pausado);
+    ov.style.setProperty("--ao-pct", pct.toFixed(1));
 
-  if (actEl) {
-    if (TLC.programaActivo !== null) {
-      actEl.innerHTML = TLC.pausado
-        ? "<button class='zo-btn resume' onclick='reanudarPrograma()' title='Reanudar'>" +
-            "<svg viewBox='0 0 16 16' fill='currentColor'><path d='M4 2l10 6-10 6V2z'/></svg></button>" +
-          "<button class='zo-btn stop' onclick='detenerPrograma()' title='Detener'>" +
-            "<svg viewBox='0 0 16 16' fill='currentColor'><rect x='3' y='3' width='10' height='10' rx='1'/></svg></button>"
-        : "<button class='zo-btn pause' onclick='pausarPrograma()' title='Pausar'>" +
-            "<svg viewBox='0 0 16 16' fill='currentColor'><rect x='3' y='2' width='3' height='12' rx='1'/><rect x='10' y='2' width='3' height='12' rx='1'/></svg></button>" +
-          "<button class='zo-btn stop' onclick='detenerPrograma()' title='Detener'>" +
-            "<svg viewBox='0 0 16 16' fill='currentColor'><rect x='3' y='3' width='10' height='10' rx='1'/></svg></button>";
-    } else {
-      actEl.innerHTML =
-        "<button class='zo-btn stop' onclick='detenerCiclo()' title='Detener'>" +
-          "<svg viewBox='0 0 16 16' fill='currentColor'><rect x='3' y='3' width='10' height='10' rx='1'/></svg></button>";
+    const pctEl  = document.getElementById("ao-pct");
+    const timeEl = document.getElementById("ao-time");
+    const zonaEl = document.getElementById("ao-zona");
+    const progEl = document.getElementById("ao-prog");
+    const actEl  = document.getElementById("ao-actions");
+
+    if (pctEl)  pctEl.textContent  = Math.round(pct) + "%";
+    if (timeEl) timeEl.textContent = formatSegundos(TLC.timerRestante);
+    if (zonaEl) zonaEl.textContent = "ZONA " + TLC.zonaActiva + (TLC.pausado ? " · ⏸ Pausada" : " · 💧 Regando");
+
+    if (progEl) {
+      if (TLC.programaActivo !== null) {
+        const prog = TLC.programas[TLC.programaActivo];
+        progEl.textContent = prog ? "Programa: " + prog.nombre : "Programa automático";
+      } else {
+        progEl.textContent = "Riego manual";
+      }
+    }
+
+    if (actEl) {
+      if (TLC.programaActivo !== null) {
+        actEl.innerHTML = TLC.pausado
+          ? "<button class='ao-btn resume' onclick='reanudarPrograma()'>" +
+              "<div class='ao-btn-circle'><svg viewBox='0 0 16 16' fill='currentColor'><path d='M4 2l10 6-10 6V2z'/></svg></div>" +
+              "<span class='ao-btn-label'>Reanudar</span></button>" +
+            "<button class='ao-btn stop' onclick='detenerPrograma()'>" +
+              "<div class='ao-btn-circle'><svg viewBox='0 0 16 16' fill='currentColor'><rect x='3' y='3' width='10' height='10' rx='1'/></svg></div>" +
+              "<span class='ao-btn-label'>Detener</span></button>"
+          : "<button class='ao-btn pause' onclick='pausarPrograma()'>" +
+              "<div class='ao-btn-circle'><svg viewBox='0 0 16 16' fill='currentColor'><rect x='3' y='2' width='3' height='12' rx='1'/><rect x='10' y='2' width='3' height='12' rx='1'/></svg></div>" +
+              "<span class='ao-btn-label'>Pausar</span></button>" +
+            "<button class='ao-btn stop' onclick='detenerPrograma()'>" +
+              "<div class='ao-btn-circle'><svg viewBox='0 0 16 16' fill='currentColor'><rect x='3' y='3' width='10' height='10' rx='1'/></svg></div>" +
+              "<span class='ao-btn-label'>Detener</span></button>";
+      } else {
+        actEl.innerHTML =
+          "<button class='ao-btn stop' onclick='detenerCiclo()'>" +
+            "<div class='ao-btn-circle'><svg viewBox='0 0 16 16' fill='currentColor'><rect x='3' y='3' width='10' height='10' rx='1'/></svg></div>" +
+            "<span class='ao-btn-label'>Detener</span></button>";
+      }
     }
   }
 }

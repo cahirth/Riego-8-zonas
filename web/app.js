@@ -22,7 +22,7 @@
 "use strict";
 
 // ─── VERSIÓN ─────────────────────────────────────────────────
-const APP_VERSION = { app: "v2.17", monitor: "v2.17", config: "v2.17" };
+const APP_VERSION = { app: "v2.18", monitor: "v2.18", config: "v2.18" };
 
 (function _bannerConsola() {
   console.log("%c TLC Riego Hidráulico ", "background:#0066CC;color:#fff;font-weight:700;font-size:13px;border-radius:4px;padding:3px 10px");
